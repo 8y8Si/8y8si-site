@@ -1,31 +1,23 @@
-import { useEffect, useState } from 'react';
+export async function getServerSideProps() {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/propiedades`);
+  const propiedades = await res.json();
 
-export default function Home() {
-  const [propiedades, setPropiedades] = useState([]);
+  return {
+    props: { propiedades },
+  };
+}
 
-  useEffect(() => {
-    fetch('/api/propiedades')
-      .then(res => res.json())
-      .then(data => setPropiedades(data.content || []))
-      .catch(err => console.error('Error cargando propiedades:', err));
-  }, []);
-
+export default function Home({ propiedades }) {
   return (
     <div>
-      <h1>Propiedades</h1>
-      {propiedades.length === 0 ? (
-        <p>No se encontraron propiedades.</p>
-      ) : (
-        propiedades.map((prop, i) => (
-          <div key={i}>
-            <h2>{prop.title}</h2>
-            <p>Precio: {prop.price}</p>
-            {prop.photos?.[0] && (
-              <img src={prop.photos[0]} alt={prop.title} width="300" />
-            )}
-          </div>
-        ))
-      )}
+      <h1>Propiedades disponibles</h1>
+      <ul>
+        {propiedades.map((prop) => (
+          <li key={prop.public_id}>
+            <strong>{prop.title}</strong> — {prop.location.name}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
