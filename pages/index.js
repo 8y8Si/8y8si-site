@@ -1,5 +1,5 @@
 export async function getServerSideProps() {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/propiedades`);
+  const res = await fetch('http://localhost:3000/api/propiedades');
   const propiedades = await res.json();
 
   return {
