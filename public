@@ -1,0 +1,3 @@
+git add .
+git commit -m "Agregada carpeta public para despliegue en Vercel"
+git push
