@@ -1,14 +1,18 @@
 {
   "name": "8y8si-site",
   "version": "1.0.0",
+  "description": "Sitio web de 8y8 Servicios Inmobiliarios con Next.js",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start"
   },
   "dependencies": {
-    "next": "latest",
-    "react": "latest",
-    "react-dom": "latest"
-  }
+    "next": "14.2.3",
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
+  },
+  "keywords": [],
+  "author": "María Teresa Verduzco Vázquez",
+  "license": "MIT"
 }
