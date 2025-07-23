@@ -10,11 +10,11 @@ export async function getServerSideProps() {
 export default function Home({ propiedades }) {
   return (
     <div>
-      <h1>Propiedades disponibles</h1>
+      <h1>Propiedades</h1>
       <ul>
         {propiedades.map((prop) => (
           <li key={prop.public_id}>
-            <strong>{prop.title}</strong> — {prop.location.name}
+            <strong>{prop.title}</strong> – {prop.location.name}
           </li>
         ))}
       </ul>
