@@ -28,7 +28,7 @@ export default function Home({ propiedades }) {
 }
 
 export async function getStaticProps() {
-  const apiKey = process.env.EASYBROKER_API_KEY;
+  const apiKey = process.env.NEXT_PUBLIC_EASYBROKER_API_KEY;
 
   if (!apiKey) {
     console.error("❌ EASYBROKER_API_KEY no está definida");
