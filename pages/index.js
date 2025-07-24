@@ -1,29 +1,47 @@
-// pages/index.js
+import React from 'react';
 
-export async function getServerSideProps(context) {
-  const protocol = context.req.headers["x-forwarded-proto"] || "http";
-  const host = context.req.headers.host;
-  const baseUrl = `${protocol}://${host}`;
-
-  const res = await fetch(`${baseUrl}/api/propiedades`);
-  const propiedades = await res.json();
-
-  return {
-    props: { propiedades },
-  };
-}
-
-export default function Home({ propiedades }) {
+export default function Home({ properties }) {
   return (
-    <div>
-      <h1>Propiedades</h1>
-      <ul>
-        {propiedades.map((prop) => (
-          <li key={prop.public_id}>
-            <strong>{prop.title}</strong> – {prop.location.name}
-          </li>
-        ))}
-      </ul>
+    <div style={{ padding: '2rem', fontFamily: 'sans-serif' }}>
+      <h1>Propiedades en venta</h1>
+      {properties.length === 0 ? (
+        <p>No se encontraron propiedades.</p>
+      ) : (
+        <ul>
+          {properties.map((prop) => (
+            <li key={prop.public_id}>
+              <strong>{prop.title}</strong> - {prop.location?.name || 'Sin ubicación'}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
+}
+
+export async function getStaticProps() {
+  try {
+    const res = await fetch('https://api.easybroker.com/v1/properties?status=published', {
+      headers: {
+        'X-Authorization': process.env.EASYBROKER_API_KEY,
+      },
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error('❌ Error en fetch:', res.status, errorText);
+      return { props: { properties: [] } };
+    }
+
+    const data = await res.json();
+    return {
+      props: {
+        properties: data.content || [],
+      },
+      revalidate: 60, // ISR: actualiza cada 60 segundos
+    };
+  } catch (error) {
+    console.error('❌ Error inesperado:', error.message);
+    return { props: { properties: [] } };
+  }
 }
