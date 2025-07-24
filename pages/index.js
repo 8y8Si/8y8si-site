@@ -1,3 +1,32 @@
+import React from 'react';
+
+export default function Home({ propiedades }) {
+  return (
+    <div>
+      <h1>Propiedades disponibles en venta o renta</h1>
+      {propiedades.length === 0 ? (
+        <p>No se encontraron propiedades disponibles.</p>
+      ) : (
+        <ul>
+          {propiedades.map((propiedad) => (
+            <li key={propiedad.id}>
+              <h2>{propiedad.title}</h2>
+              {propiedad.title_image_full && (
+                <img
+                  src={propiedad.title_image_full}
+                  alt={propiedad.title}
+                  width={300}
+                />
+              )}
+              <p>{propiedad.location}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export async function getServerSideProps() {
   const apiKey = process.env.EASYBROKER_API_KEY;
 
@@ -26,11 +55,10 @@ export async function getServerSideProps() {
 
     const data = await res.json();
 
-    const propiedadesDisponibles = data.content?.filter(
-      (p) =>
-        p.operation_status === 'disponible' &&
-        p.archived === false
-    ) || [];
+    // Filtrar propiedades NO archivadas y con estatus 'disponible'
+    const propiedadesDisponibles = data.content.filter(
+      (p) => p.archived === false && p.operation_status === 'disponible'
+    );
 
     return {
       props: {
