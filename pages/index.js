@@ -40,7 +40,8 @@ export async function getStaticProps() {
   }
 
   try {
-    const res = await fetch("https://api.easybroker.com/v1/properties", {
+    const res = await fetch("https://api.easybroker.com/v1/properties?status=published", {
+
       headers: {
         "X-Authorization": apiKey,
         "Content-Type": "application/json",
