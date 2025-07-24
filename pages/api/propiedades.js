@@ -8,5 +8,7 @@ export default async function handler(req, res) {
   });
 
   const data = await response.json();
+
+  // Te regreso todo para verificar que sí jala la API sin filtros
   res.status(200).json(data.content || []);
 }
