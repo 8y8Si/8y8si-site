@@ -1,3 +1,4 @@
+// pages/index.js
 import React from 'react';
 
 export default function Home({ propiedades }) {
@@ -27,6 +28,7 @@ export default function Home({ propiedades }) {
   );
 }
 
+// 🔽 AQUÍ PEGAS LA FUNCIÓN CORREGIDA 🔽
 export async function getStaticProps() {
   const apiKey = process.env.NEXT_PUBLIC_EASYBROKER_API_KEY;
 
@@ -41,7 +43,6 @@ export async function getStaticProps() {
 
   try {
     const res = await fetch("https://api.easybroker.com/v1/properties?status=published", {
-
       headers: {
         "X-Authorization": apiKey,
         "Content-Type": "application/json",
