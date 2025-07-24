@@ -1,36 +1,5 @@
-// pages/index.js
-import React from 'react';
-
-export default function Home({ propiedades }) {
-  return (
-    <div>
-      <h1>Propiedades en venta</h1>
-      {propiedades.length === 0 ? (
-        <p>No se encontraron propiedades.</p>
-      ) : (
-        <ul>
-          {propiedades.map((propiedad) => (
-            <li key={propiedad.id}>
-              <h2>{propiedad.title}</h2>
-              {propiedad.title_image_full && (
-                <img
-                  src={propiedad.title_image_full}
-                  alt={propiedad.title}
-                  width={300}
-                />
-              )}
-              <p>{propiedad.location}</p>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-// 🔽 AQUÍ PEGAS LA FUNCIÓN CORREGIDA 🔽
-export async function getStaticProps() {
-  const apiKey = process.env.NEXT_PUBLIC_EASYBROKER_API_KEY;
+export async function getServerSideProps() {
+  const apiKey = process.env.EASYBROKER_API_KEY;
 
   if (!apiKey) {
     console.error("❌ EASYBROKER_API_KEY no está definida");
@@ -57,11 +26,16 @@ export async function getStaticProps() {
 
     const data = await res.json();
 
+    const propiedadesDisponibles = data.content?.filter(
+      (p) =>
+        p.operation_status === 'disponible' &&
+        p.archived === false
+    ) || [];
+
     return {
       props: {
-        propiedades: data.content || [],
+        propiedades: propiedadesDisponibles,
       },
-      revalidate: 3600,
     };
   } catch (error) {
     console.error("❌ Error al obtener propiedades:", error.message);
