@@ -2,14 +2,14 @@ import React from 'react';
 
 export default function Home({ propiedades }) {
   return (
-    <div>
-      <h1>Propiedades disponibles en venta o renta</h1>
+    <div style={{ padding: '2rem' }}>
+      <h1>Propiedades en venta</h1>
       {propiedades.length === 0 ? (
         <p>No se encontraron propiedades disponibles.</p>
       ) : (
-        <ul>
+        <ul style={{ listStyle: 'none', padding: 0 }}>
           {propiedades.map((propiedad) => (
-            <li key={propiedad.id}>
+            <li key={propiedad.id} style={{ marginBottom: '2rem' }}>
               <h2>{propiedad.title}</h2>
               {propiedad.title_image_full && (
                 <img
@@ -18,7 +18,8 @@ export default function Home({ propiedades }) {
                   width={300}
                 />
               )}
-              <p>{propiedad.location}</p>
+              <p>{propiedad.location?.name || 'Ubicación no disponible'}</p>
+              <p><strong>Precio:</strong> {propiedad.operations?.[0]?.amount_formatted || 'No disponible'}</p>
             </li>
           ))}
         </ul>
@@ -40,7 +41,7 @@ export async function getServerSideProps() {
   }
 
   try {
-    const res = await fetch("https://api.easybroker.com/v1/properties?status=published", {
+    const res = await fetch("https://api.easybroker.com/v1/properties?status=published&page=1&limit=50", {
       headers: {
         "X-Authorization": apiKey,
         "Content-Type": "application/json",
@@ -55,14 +56,17 @@ export async function getServerSideProps() {
 
     const data = await res.json();
 
-    // Filtrar propiedades NO archivadas y con estatus 'disponible'
-    const propiedadesDisponibles = data.content.filter(
-      (p) => p.archived === false && p.operation_status === 'disponible'
+    // Filtramos propiedades con imagen y visibles públicamente
+    const propiedadesVisibles = data.content.filter(
+      (prop) =>
+        prop.title_image_full &&
+        prop.visibility === 'public' &&
+        prop.status === 'published'
     );
 
     return {
       props: {
-        propiedades: propiedadesDisponibles,
+        propiedades: propiedadesVisibles,
       },
     };
   } catch (error) {
