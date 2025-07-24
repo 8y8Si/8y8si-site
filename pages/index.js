@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // pages/index.js
 import React, { useEffect, useState } from 'react';
 import PropertyFilters from '../components/PropertyFilters';
@@ -60,6 +61,9 @@ export default function Home() {
 
   fetchPropiedades();
 }, [filters]);
+=======
+import React from 'react';
+>>>>>>> 36522b0 (Update index.js)
 
   return (
     <div style={{ padding: '2rem' }}>
@@ -90,3 +94,49 @@ export default function Home() {
     </div>
   );
 }
+<<<<<<< HEAD
+=======
+
+export async function getServerSideProps() {
+  const apiKey = process.env.EASYBROKER_API_KEY;
+
+  if (!apiKey) {
+    console.error("❌ EASYBROKER_API_KEY no está definida");
+    return {
+      props: {
+        propiedades: [],
+      },
+    };
+  }
+
+  try {
+    const res = await fetch("https://api.easybroker.com/v1/properties?status=published", {
+      headers: {
+        "X-Authorization": apiKey,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json();
+      console.error("❌ Error en respuesta:", errorData);
+      throw new Error(`Error ${res.status}`);
+    }
+
+    const data = await res.json();
+
+    return {
+      props: {
+        propiedades: data.content || [],
+      },
+    };
+  } catch (error) {
+    console.error("❌ Error al obtener propiedades:", error.message);
+    return {
+      props: {
+        propiedades: [],
+      },
+    };
+  }
+}
+>>>>>>> 36522b0 (Update index.js)
