@@ -1,5 +1,11 @@
-export async function getServerSideProps() {
-  const res = await fetch('http://localhost:3000/api/propiedades');
+// pages/index.js
+
+export async function getServerSideProps(context) {
+  const protocol = context.req.headers["x-forwarded-proto"] || "http";
+  const host = context.req.headers.host;
+  const baseUrl = `${protocol}://${host}`;
+
+  const res = await fetch(`${baseUrl}/api/propiedades`);
   const propiedades = await res.json();
 
   return {
