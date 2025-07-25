@@ -3,14 +3,14 @@ import React from 'react';
 export default function Home({ propiedades }) {
   return (
     <div>
-      <h1>Propiedades publicadas (sin filtro de tipo de operación)</h1>
+      <h1>Propiedades disponibles en venta o renta</h1>
       {propiedades.length === 0 ? (
-        <p>No se encontraron propiedades.</p>
+        <p>No se encontraron propiedades disponibles.</p>
       ) : (
         <ul>
           {propiedades.map((propiedad) => (
-            <li key={propiedad.public_id}>
-              <h2>{propiedad.title || 'Sin título'}</h2>
+            <li key={propiedad.id}>
+              <h2>{propiedad.title}</h2>
               {propiedad.title_image_full && (
                 <img
                   src={propiedad.title_image_full}
@@ -18,11 +18,9 @@ export default function Home({ propiedades }) {
                   width={300}
                 />
               )}
-              <p>
-                <strong>ID:</strong> {propiedad.public_id}<br />
-                <strong>Tipo:</strong> {propiedad.operation_type}<br />
-                <strong>Ubicación:</strong> {propiedad.location?.name || 'No disponible'}
-              </p>
+              <p>{propiedad.location}</p>
+              <p>Operación: {propiedad.operation_type}</p>
+              <p>Precio: ${propiedad.public_price}</p>
             </li>
           ))}
         </ul>
@@ -36,14 +34,20 @@ export async function getServerSideProps() {
 
   if (!apiKey) {
     console.error("❌ EASYBROKER_API_KEY no está definida");
-    return { props: { propiedades: [] } };
+    return {
+      props: {
+        propiedades: [],
+      },
+    };
   }
 
   try {
-    const res = await fetch("https://api.easybroker.com/v1/properties?search[statuses][]=published", {
+    const url = `https://api.easybroker.com/v1/properties?search[statuses][]=published&limit=50`;
+
+    const res = await fetch(url, {
       headers: {
         "X-Authorization": apiKey,
-        "Content-Type": "application/json",
+        "Accept": "application/json",
       },
     });
 
