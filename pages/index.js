@@ -18,7 +18,6 @@ export default function Home({ propiedades }) {
                   width={300}
                 />
               )}
-              <p>{propiedad.location}</p>
               <p>Operación: {propiedad.operation_type}</p>
               <p>Precio: ${propiedad.public_price}</p>
             </li>
