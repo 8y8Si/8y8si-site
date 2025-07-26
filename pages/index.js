@@ -28,11 +28,43 @@ export default function Home({ propiedades }) {
   );
 }
 
+// Función que hace la paginación completa
+async function fetchAllAvailableProperties(apiKey) {
+  let page = 1;
+  let allProperties = [];
+  let hasMore = true;
+
+  while (hasMore) {
+    const url = `https://api.easybroker.com/v1/properties?search[statuses][]=published&search[availability][]=available&limit=100&page=${page}`;
+
+    const res = await fetch(url, {
+      headers: {
+        'X-Authorization': apiKey,
+        'Accept': 'application/json',
+      },
+    });
+
+    if (!res.ok) {
+      console.error(`❌ Error en la página ${page}:`, await res.text());
+      break;
+    }
+
+    const data = await res.json();
+    allProperties = allProperties.concat(data.content || []);
+
+    // Si ya no hay más páginas, detenemos el loop
+    hasMore = data.pagination && data.pagination.total_pages > page;
+    page++;
+  }
+
+  return allProperties;
+}
+
 export async function getServerSideProps() {
   const apiKey = process.env.EASYBROKER_API_KEY;
 
   if (!apiKey) {
-    console.error("❌ EASYBROKER_API_KEY no está definida");
+    console.error('❌ EASYBROKER_API_KEY no está definida');
     return {
       props: {
         propiedades: [],
@@ -41,30 +73,14 @@ export async function getServerSideProps() {
   }
 
   try {
-    const url = `https://api.easybroker.com/v1/properties?search[statuses][]=published&search[availability][]=available&limit=100`;
-
-    const res = await fetch(url, {
-      headers: {
-        "X-Authorization": apiKey,
-        "Accept": "application/json",
-      },
-    });
-
-    if (!res.ok) {
-      const errorData = await res.json();
-      console.error("❌ Error en respuesta:", errorData);
-      throw new Error(`Error ${res.status}`);
-    }
-
-    const data = await res.json();
-
+    const propiedades = await fetchAllAvailableProperties(apiKey);
     return {
       props: {
-        propiedades: data.content || [],
+        propiedades,
       },
     };
   } catch (error) {
-    console.error("❌ Error al obtener propiedades:", error.message);
+    console.error('❌ Error al obtener propiedades:', error.message);
     return {
       props: {
         propiedades: [],
