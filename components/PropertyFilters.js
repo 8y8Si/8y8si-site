@@ -1,98 +1,97 @@
-import React from 'react';
+// components/PropertyFilters.js
 
-export default function PropertyFilters({ filters, onFilterChange }) {
+import React from "react";
+
+const PropertyFilters = ({ filters, onChange }) => {
   return (
-    <div style={{ marginBottom: '20px' }}>
-      <label>
-        Tipo de operación:
-        <select name="operation" value={filters.operation} onChange={onFilterChange}>
-          <option value="">Todos</option>
-          <option value="sale">Venta</option>
-          <option value="rent">Renta</option>
-        </select>
-      </label>
-      <label>
-        Recámaras:
-        <input
-          type="number"
-          name="bedrooms"
-          value={filters.bedrooms}
-          onChange={onFilterChange}
-          placeholder="Min"
-          min={0}
-        />
-      </label>
-      <label>
-        Baños:
-        <input
-          type="number"
-          name="bathrooms"
-          value={filters.bathrooms}
-          onChange={onFilterChange}
-          placeholder="Min"
-          min={0}
-        />
-      </label>
-      <label>
-        Medios baños:
-        <input
-          type="number"
-          name="half_bathrooms"
-          value={filters.half_bathrooms}
-          onChange={onFilterChange}
-          placeholder="Min"
-          min={0}
-        />
-      </label>
-      <label>
-        Piso:
-        <input
-          type="number"
-          name="floor"
-          value={filters.floor}
-          onChange={onFilterChange}
-          placeholder="Número"
-          min={0}
-        />
-      </label>
-      <label>
-        m² mínimo:
-        <input
-          type="number"
-          name="min_construction_size"
-          value={filters.min_construction_size}
-          onChange={onFilterChange}
-          placeholder="Min"
-          min={0}
-        />
-      </label>
-      <label>
-        ¿Tiene terraza?
-        <select name="terrace" value={filters.terrace} onChange={onFilterChange}>
-          <option value="">No filtrar</option>
-          <option value="true">Sí</option>
-          <option value="false">No</option>
-        </select>
-      </label>
-      <label>
-        ¿Tiene balcón?
-        <select name="balcony" value={filters.balcony} onChange={onFilterChange}>
-          <option value="">No filtrar</option>
-          <option value="true">Sí</option>
-          <option value="false">No</option>
-        </select>
-      </label>
-      <label>
-        Estacionamientos:
-        <input
-          type="number"
-          name="parking_spaces"
-          value={filters.parking_spaces}
-          onChange={onFilterChange}
-          placeholder="Min"
-          min={0}
-        />
-      </label>
+    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 p-4">
+      <select
+        value={filters.operation}
+        onChange={(e) => onChange("operation", e.target.value)}
+        className="border p-2 rounded"
+      >
+        <option value="">Operación</option>
+        <option value="sale">Venta</option>
+        <option value="rent">Renta</option>
+      </select>
+
+      <input
+        type="number"
+        placeholder="Recámaras"
+        value={filters.bedrooms}
+        onChange={(e) => onChange("bedrooms", e.target.value)}
+        className="border p-2 rounded"
+      />
+
+      <input
+        type="number"
+        placeholder="Baños"
+        value={filters.bathrooms}
+        onChange={(e) => onChange("bathrooms", e.target.value)}
+        className="border p-2 rounded"
+      />
+
+      <input
+        type="number"
+        placeholder="Medios baños"
+        value={filters.half_bathrooms}
+        onChange={(e) => onChange("half_bathrooms", e.target.value)}
+        className="border p-2 rounded"
+      />
+
+      <input
+        type="number"
+        placeholder="Piso"
+        value={filters.floor}
+        onChange={(e) => onChange("floor", e.target.value)}
+        className="border p-2 rounded"
+      />
+
+      <input
+        type="number"
+        placeholder="m² mínimo"
+        value={filters.min_m2}
+        onChange={(e) => onChange("min_m2", e.target.value)}
+        className="border p-2 rounded"
+      />
+
+      <input
+        type="number"
+        placeholder="m² máximo"
+        value={filters.max_m2}
+        onChange={(e) => onChange("max_m2", e.target.value)}
+        className="border p-2 rounded"
+      />
+
+      <select
+        value={filters.has_terrace}
+        onChange={(e) => onChange("has_terrace", e.target.value)}
+        className="border p-2 rounded"
+      >
+        <option value="">¿Terraza?</option>
+        <option value="true">Sí</option>
+        <option value="false">No</option>
+      </select>
+
+      <select
+        value={filters.has_balcony}
+        onChange={(e) => onChange("has_balcony", e.target.value)}
+        className="border p-2 rounded"
+      >
+        <option value="">¿Balcón?</option>
+        <option value="true">Sí</option>
+        <option value="false">No</option>
+      </select>
+
+      <input
+        type="number"
+        placeholder="Estacionamientos"
+        value={filters.parking_spaces}
+        onChange={(e) => onChange("parking_spaces", e.target.value)}
+        className="border p-2 rounded"
+      />
     </div>
   );
-}
+};
+
+export default PropertyFilters;
