@@ -9,7 +9,7 @@ export default function Home({ propiedades }) {
       ) : (
         <ul>
           {propiedades.map((propiedad) => (
-            <li key={propiedad.id}>
+            <li key={propiedad.id} style={{ marginBottom: "2rem" }}>
               <h2>{propiedad.title}</h2>
               {propiedad.title_image_full && (
                 <img
@@ -23,8 +23,17 @@ export default function Home({ propiedades }) {
                 Precio:{' '}
                 {propiedad.public_price
                   ? `$${Number(propiedad.public_price).toLocaleString()}`
+                  : propiedad.price
+                  ? `$${Number(propiedad.price).toLocaleString()}`
+                  : propiedad.formatted_price
+                  ? propiedad.formatted_price
                   : 'No disponible'}
               </p>
+
+              {/* Este bloque te ayuda a revisar qué campos están disponibles */}
+              <pre style={{ background: "#f9f9f9", padding: "1rem" }}>
+                {JSON.stringify(propiedad, null, 2)}
+              </pre>
             </li>
           ))}
         </ul>
@@ -45,42 +54,28 @@ export async function getServerSideProps() {
     };
   }
 
-  const propiedades = [];
-  let page = 1;
-  const limit = 50;
-  let hasMore = true;
-
   try {
-    while (hasMore) {
-      const res = await fetch(
-        `https://api.easybroker.com/v1/properties?search[statuses][]=published&page=${page}&limit=${limit}`,
-        {
-          headers: {
-            "X-Authorization": apiKey,
-            Accept: "application/json",
-          },
-        }
-      );
+    const url = `https://api.easybroker.com/v1/properties?search[statuses][]=published&limit=50`;
 
-      if (!res.ok) {
-        const errorData = await res.json();
-        console.error("❌ Error en respuesta:", errorData);
-        throw new Error(`Error ${res.status}`);
-      }
+    const res = await fetch(url, {
+      headers: {
+        "X-Authorization": apiKey,
+        "Accept": "application/json",
+      },
+    });
 
-      const data = await res.json();
-      propiedades.push(...data.content);
-
-      if (data.pagination && data.pagination.total_pages > page) {
-        page++;
-      } else {
-        hasMore = false;
-      }
+    if (!res.ok) {
+      const errorData = await res.json();
+      console.error("❌ Error en respuesta:", errorData);
+      throw new Error(`Error ${res.status}`);
     }
+
+    const data = await res.json();
+    console.log("✅ Datos recibidos de EasyBroker:", data);
 
     return {
       props: {
-        propiedades,
+        propiedades: data.content || [],
       },
     };
   } catch (error) {
