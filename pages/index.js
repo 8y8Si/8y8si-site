@@ -1,15 +1,87 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 export default function Home({ propiedades }) {
+  const [filtro, setFiltro] = useState({
+    operacion: '',
+    tipo: '',
+    precioMin: '',
+    precioMax: '',
+  });
+
+  const handleChange = (e) => {
+    setFiltro({ ...filtro, [e.target.name]: e.target.value });
+  };
+
+  const filtrarPropiedades = () => {
+    return propiedades.filter((prop) => {
+      const op = prop.operations?.[0]?.type || '';
+      const tipo = prop.property_type || '';
+      const precio = prop.operations?.[0]?.amount || 0;
+
+      return (
+        (filtro.operacion === '' || op === filtro.operacion) &&
+        (filtro.tipo === '' || tipo === filtro.tipo) &&
+        (filtro.precioMin === '' || precio >= parseInt(filtro.precioMin)) &&
+        (filtro.precioMax === '' || precio <= parseInt(filtro.precioMax))
+      );
+    });
+  };
+
+  const propiedadesFiltradas = filtrarPropiedades();
+
   return (
     <div>
       <h1>Propiedades disponibles en venta o renta</h1>
-      {propiedades.length === 0 ? (
+
+      <div style={{ marginBottom: "1rem" }}>
+        <select name="operacion" onChange={handleChange}>
+          <option value="">Operación</option>
+          <option value="venta">Venta</option>
+          <option value="renta">Renta</option>
+        </select>
+
+        <select name="tipo" onChange={handleChange}>
+          <option value="">Tipo de Propiedad</option>
+          <option value="Casa">Casa</option>
+          <option value="Casa en condominio">Casa en condominio</option>
+          <option value="Departamento">Departamento</option>
+          <option value="Quinta">Quinta</option>
+          <option value="Rancho">Rancho</option>
+          <option value="Terreno">Terreno</option>
+          <option value="Villa">Villa</option>
+          <option value="Bodega comercial">Bodega comercial</option>
+          <option value="Casa con uso de suelo">Casa con uso de suelo</option>
+          <option value="Edificio">Edificio</option>
+          <option value="Huerta">Huerta</option>
+          <option value="Local comercial">Local comercial</option>
+          <option value="Local en centro comercial">Local en centro comercial</option>
+          <option value="Oficina">Oficina</option>
+          <option value="Terreno comercial">Terreno comercial</option>
+          <option value="Bodega industrial">Bodega industrial</option>
+          <option value="Nave industrial">Nave industrial</option>
+          <option value="Terreno industrial">Terreno industrial</option>
+        </select>
+
+        <input
+          type="number"
+          name="precioMin"
+          placeholder="Precio mínimo"
+          onChange={handleChange}
+        />
+
+        <input
+          type="number"
+          name="precioMax"
+          placeholder="Precio máximo"
+          onChange={handleChange}
+        />
+      </div>
+
+      {propiedadesFiltradas.length === 0 ? (
         <p>No se encontraron propiedades disponibles.</p>
       ) : (
         <ul>
-          {propiedades.map((propiedad) => {
-            // Buscar la primera operación (venta o renta)
+          {propiedadesFiltradas.map((propiedad) => {
             const operacion = propiedad.operations?.[0];
             const precio = operacion?.formatted_amount || 'No disponible';
 
@@ -35,7 +107,7 @@ export default function Home({ propiedades }) {
 }
 
 export async function getServerSideProps() {
-  const apiKey = process.env.EASYBROKER_API_KEY;
+  const apiKey = process.env.EASYBROKER_API_KEY || process.env.NEXT_PUBLIC_EASYBROKER_API_KEY;
 
   if (!apiKey) {
     console.error("❌ EASYBROKER_API_KEY no está definida");
@@ -63,8 +135,6 @@ export async function getServerSideProps() {
     }
 
     const data = await res.json();
-    console.log("✅ Datos recibidos de EasyBroker:", data);
-
     return {
       props: {
         propiedades: data.content || [],
