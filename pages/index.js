@@ -29,16 +29,8 @@ export default function Home({ propiedades }) {
 }
 
 export async function getServerSideProps() {
-  const apiKey = process.env.EASYBROKER_API_KEY;
-
-  if (!apiKey) {
-    console.error("❌ EASYBROKER_API_KEY no está definida");
-    return {
-      props: {
-        propiedades: [],
-      },
-    };
-  }
+  // 🚨 Aquí va tu API Key directamente para pruebas
+  const apiKey = 'TU_API_KEY_AQUÍ';
 
   try {
     const url = `https://api.easybroker.com/v1/properties?limit=50`;
@@ -57,6 +49,8 @@ export async function getServerSideProps() {
     }
 
     const data = await res.json();
+
+    console.log("✅ Propiedades obtenidas:", data.content);
 
     return {
       props: {
