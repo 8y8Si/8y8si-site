@@ -41,7 +41,7 @@ export async function getServerSideProps() {
   }
 
   try {
-    const url = `https://api.easybroker.com/v1/properties?search[statuses][]=published&limit=200`;
+    const url = `https://api.easybroker.com/v1/properties?search[statuses][]=published&search[availability][]=available&limit=100`;
 
     const res = await fetch(url, {
       headers: {
@@ -58,14 +58,9 @@ export async function getServerSideProps() {
 
     const data = await res.json();
 
-    // 🔍 Filtra manualmente para quitar archivadas
-    const propiedadesDisponibles = data.content.filter(
-      (propiedad) => !propiedad.archived && propiedad.status === "published"
-    );
-
     return {
       props: {
-        propiedades: propiedadesDisponibles,
+        propiedades: data.content || [],
       },
     };
   } catch (error) {
