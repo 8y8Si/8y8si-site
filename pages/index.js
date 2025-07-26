@@ -30,7 +30,7 @@ export default function Home({ propiedades }) {
 
 export async function getServerSideProps() {
   // 🚨 Aquí va tu API Key directamente para pruebas
-  const apiKey = 'TU_API_KEY_AQUÍ';
+  const apiKey = 'jv9gfkvgx3hui78sldvjj4wdi7z4ns';
 
   try {
     const url = `https://api.easybroker.com/v1/properties?limit=50`;
