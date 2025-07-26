@@ -29,11 +29,19 @@ export default function Home({ propiedades }) {
 }
 
 export async function getServerSideProps() {
-  // 🚨 Aquí va tu API Key directamente para pruebas
-  const apiKey = 'jv9gfkvgx3hui78sldvjj4wdi7z4ns';
+  const apiKey = process.env.EASYBROKER_API_KEY;
+
+  if (!apiKey) {
+    console.error("❌ EASYBROKER_API_KEY no está definida");
+    return {
+      props: {
+        propiedades: [],
+      },
+    };
+  }
 
   try {
-    const url = `https://api.easybroker.com/v1/properties?limit=50`;
+    const url = `https://api.easybroker.com/v1/properties?search[statuses][]=published&limit=200`;
 
     const res = await fetch(url, {
       headers: {
@@ -50,11 +58,14 @@ export async function getServerSideProps() {
 
     const data = await res.json();
 
-    console.log("✅ Propiedades obtenidas:", data.content);
+    // 🔍 Filtra manualmente para quitar archivadas
+    const propiedadesDisponibles = data.content.filter(
+      (propiedad) => !propiedad.archived && propiedad.status === "published"
+    );
 
     return {
       props: {
-        propiedades: data.content || [],
+        propiedades: propiedadesDisponibles,
       },
     };
   } catch (error) {
