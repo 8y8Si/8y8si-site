@@ -41,7 +41,7 @@ export async function getServerSideProps() {
   }
 
   try {
-    const url = `https://api.easybroker.com/v1/properties?search[statuses][]=published&limit=50`;
+    const url = `https://api.easybroker.com/v1/properties?limit=50`;
 
     const res = await fetch(url, {
       headers: {
