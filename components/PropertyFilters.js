@@ -14,12 +14,17 @@ export default function Home({ propiedades }) {
 
   const filtrarPropiedades = () => {
     return propiedades.filter((prop) => {
-      const op = prop.operations?.[0]?.type || '';
+      const operaciones = prop.operations || [];
       const tipo = prop.property_type || '';
-      const precio = prop.operations?.[0]?.amount || 0;
+      const precio = operaciones[0]?.amount || 0;
+
+      // Si el filtro de operación está activo, aseguramos que al menos una operación coincida
+      const operacionCoincide =
+        filtro.operacion === '' ||
+        operaciones.some((op) => op.type === filtro.operacion);
 
       return (
-        (filtro.operacion === '' || op === filtro.operacion) &&
+        operacionCoincide &&
         (filtro.tipo === '' || tipo === filtro.tipo) &&
         (filtro.precioMin === '' || precio >= parseInt(filtro.precioMin)) &&
         (filtro.precioMax === '' || precio <= parseInt(filtro.precioMax))
@@ -34,13 +39,13 @@ export default function Home({ propiedades }) {
       <h1>Propiedades disponibles en venta o renta</h1>
 
       <div style={{ marginBottom: "1rem" }}>
-        <select name="operacion" onChange={handleChange}>
+        <select name="operacion" value={filtro.operacion} onChange={handleChange}>
           <option value="">Operación</option>
           <option value="sale">Venta</option>
           <option value="rent">Renta</option>
         </select>
 
-        <select name="tipo" onChange={handleChange}>
+        <select name="tipo" value={filtro.tipo} onChange={handleChange}>
           <option value="">Tipo de Propiedad</option>
           <option value="Casa">Casa</option>
           <option value="Casa en condominio">Casa en condominio</option>
@@ -66,6 +71,7 @@ export default function Home({ propiedades }) {
           type="number"
           name="precioMin"
           placeholder="Precio mínimo"
+          value={filtro.precioMin}
           onChange={handleChange}
         />
 
@@ -73,6 +79,7 @@ export default function Home({ propiedades }) {
           type="number"
           name="precioMax"
           placeholder="Precio máximo"
+          value={filtro.precioMax}
           onChange={handleChange}
         />
       </div>
