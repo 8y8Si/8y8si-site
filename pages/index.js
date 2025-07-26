@@ -106,6 +106,35 @@ export default function Home({ propiedades }) {
   );
 }
 
+// 🔁 Función para paginar hasta traer todas las propiedades
+async function fetchAllProperties(apiKey) {
+  const all = [];
+  let page = 1;
+  let totalPages = 1;
+
+  do {
+    const res = await fetch(`https://api.easybroker.com/v1/properties?search[statuses][]=published&page=${page}&limit=50`, {
+      headers: {
+        "X-Authorization": apiKey,
+        "Accept": "application/json",
+      },
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json();
+      console.error("❌ Error en respuesta:", errorData);
+      break;
+    }
+
+    const data = await res.json();
+    totalPages = data.pagination.total_pages;
+    all.push(...data.content);
+    page++;
+  } while (page <= totalPages);
+
+  return all;
+}
+
 export async function getServerSideProps() {
   const apiKey = process.env.EASYBROKER_API_KEY || process.env.NEXT_PUBLIC_EASYBROKER_API_KEY;
 
@@ -119,25 +148,10 @@ export async function getServerSideProps() {
   }
 
   try {
-    const url = `https://api.easybroker.com/v1/properties?search[statuses][]=published&limit=50`;
-
-    const res = await fetch(url, {
-      headers: {
-        "X-Authorization": apiKey,
-        "Accept": "application/json",
-      },
-    });
-
-    if (!res.ok) {
-      const errorData = await res.json();
-      console.error("❌ Error en respuesta:", errorData);
-      throw new Error(`Error ${res.status}`);
-    }
-
-    const data = await res.json();
+    const propiedades = await fetchAllProperties(apiKey);
     return {
       props: {
-        propiedades: data.content || [],
+        propiedades,
       },
     };
   } catch (error) {
