@@ -16,12 +16,13 @@ export default function Home({ propiedades }) {
     return propiedades.filter((prop) => {
       const operaciones = prop.operations || [];
       const tipo = prop.property_type || '';
-      const primeraOperacion = operaciones[0] || {};
-      const precio = primeraOperacion.amount || 0;
+      const precio = operaciones[0]?.amount || 0;
 
       const operacionCoincide =
         filtro.operacion === '' ||
-        operaciones.some((op) => op.type === filtro.operacion);
+        operaciones.some((op) =>
+          op.type.toLowerCase().includes(filtro.operacion.toLowerCase())
+        );
 
       return (
         operacionCoincide &&
