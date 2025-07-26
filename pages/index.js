@@ -8,34 +8,26 @@ export default function Home({ propiedades }) {
         <p>No se encontraron propiedades disponibles.</p>
       ) : (
         <ul>
-          {propiedades.map((propiedad) => (
-            <li key={propiedad.id} style={{ marginBottom: "2rem" }}>
-              <h2>{propiedad.title}</h2>
-              {propiedad.title_image_full && (
-                <img
-                  src={propiedad.title_image_full}
-                  alt={propiedad.title}
-                  width={300}
-                />
-              )}
-              <p>Operación: {propiedad.operation_type}</p>
-              <p>
-                Precio:{' '}
-                {propiedad.public_price
-                  ? `$${Number(propiedad.public_price).toLocaleString()}`
-                  : propiedad.price
-                  ? `$${Number(propiedad.price).toLocaleString()}`
-                  : propiedad.formatted_price
-                  ? propiedad.formatted_price
-                  : 'No disponible'}
-              </p>
+          {propiedades.map((propiedad) => {
+            // Buscar la primera operación (venta o renta)
+            const operacion = propiedad.operations?.[0];
+            const precio = operacion?.formatted_amount || 'No disponible';
 
-              {/* Este bloque te ayuda a revisar qué campos están disponibles */}
-              <pre style={{ background: "#f9f9f9", padding: "1rem" }}>
-                {JSON.stringify(propiedad, null, 2)}
-              </pre>
-            </li>
-          ))}
+            return (
+              <li key={propiedad.id} style={{ marginBottom: "2rem" }}>
+                <h2>{propiedad.title}</h2>
+                {propiedad.title_image_full && (
+                  <img
+                    src={propiedad.title_image_full}
+                    alt={propiedad.title}
+                    width={300}
+                  />
+                )}
+                <p>Operación: {operacion?.type || 'No especificado'}</p>
+                <p>Precio: {precio}</p>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>
