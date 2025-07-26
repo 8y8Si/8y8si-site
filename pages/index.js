@@ -30,14 +30,14 @@ export default function Home({ propiedades }) {
   const propiedadesFiltradas = filtrarPropiedades();
 
   return (
-    <div>
+    <div style={{ padding: '2rem' }}>
       <h1>Propiedades disponibles en venta o renta</h1>
 
-      <div style={{ marginBottom: "1rem" }}>
+      <div style={{ marginBottom: '1rem', display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
         <select name="operacion" onChange={handleChange}>
           <option value="">Operación</option>
-          <option value="venta">Venta</option>
-          <option value="renta">Renta</option>
+          <option value="sale">Venta</option>
+          <option value="rent">Renta</option>
         </select>
 
         <select name="tipo" onChange={handleChange}>
@@ -80,13 +80,13 @@ export default function Home({ propiedades }) {
       {propiedadesFiltradas.length === 0 ? (
         <p>No se encontraron propiedades disponibles.</p>
       ) : (
-        <ul>
+        <ul style={{ listStyle: 'none', padding: 0 }}>
           {propiedadesFiltradas.map((propiedad) => {
             const operacion = propiedad.operations?.[0];
             const precio = operacion?.formatted_amount || 'No disponible';
 
             return (
-              <li key={propiedad.id} style={{ marginBottom: "2rem" }}>
+              <li key={propiedad.id} style={{ marginBottom: "2rem", borderBottom: '1px solid #ccc', paddingBottom: '1rem' }}>
                 <h2>{propiedad.title}</h2>
                 {propiedad.title_image_full && (
                   <img
