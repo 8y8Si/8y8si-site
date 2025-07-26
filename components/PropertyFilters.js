@@ -16,9 +16,9 @@ export default function Home({ propiedades }) {
     return propiedades.filter((prop) => {
       const operaciones = prop.operations || [];
       const tipo = prop.property_type || '';
-      const precio = operaciones[0]?.amount || 0;
+      const primeraOperacion = operaciones[0] || {};
+      const precio = primeraOperacion.amount || 0;
 
-      // Si el filtro de operación está activo, aseguramos que al menos una operación coincida
       const operacionCoincide =
         filtro.operacion === '' ||
         operaciones.some((op) => op.type === filtro.operacion);
@@ -125,26 +125,32 @@ export async function getServerSideProps() {
     };
   }
 
+  const allProperties = [];
+  let nextPage = `https://api.easybroker.com/v1/properties?search[statuses][]=published&limit=50`;
+
   try {
-    const url = `https://api.easybroker.com/v1/properties?search[statuses][]=published&limit=100`;
+    while (nextPage) {
+      const res = await fetch(nextPage, {
+        headers: {
+          "X-Authorization": apiKey,
+          "Accept": "application/json",
+        },
+      });
 
-    const res = await fetch(url, {
-      headers: {
-        "X-Authorization": apiKey,
-        "Accept": "application/json",
-      },
-    });
+      if (!res.ok) {
+        const errorData = await res.json();
+        console.error("❌ Error en respuesta:", errorData);
+        throw new Error(`Error ${res.status}`);
+      }
 
-    if (!res.ok) {
-      const errorData = await res.json();
-      console.error("❌ Error en respuesta:", errorData);
-      throw new Error(`Error ${res.status}`);
+      const data = await res.json();
+      allProperties.push(...data.content);
+      nextPage = data.pagination?.next_page_url || null;
     }
 
-    const data = await res.json();
     return {
       props: {
-        propiedades: data.content || [],
+        propiedades: allProperties,
       },
     };
   } catch (error) {
