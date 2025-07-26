@@ -7,40 +7,59 @@ export default function Home() {
   const [filters, setFilters] = useState({});
 
   useEffect(() => {
-    const fetchPropiedades = async () => {
-      const apiKey = process.env.NEXT_PUBLIC_EASYBROKER_API_KEY;
-      const params = new URLSearchParams();
+  const fetchPropiedades = async () => {
+    const apiKey = process.env.NEXT_PUBLIC_EASYBROKER_API_KEY;
+    const params = new URLSearchParams();
 
-      params.append('search[statuses][]', 'published');
-      params.append('limit', '100');
+    params.append('search[statuses][]', 'published');
+    params.append('search[archived]', 'false');
+    params.append('limit', '100');
 
-      if (filters.operation_type) params.append('search[operation_type]', filters.operation_type);
-      if (filters.bedrooms) params.append('search[bedrooms]', filters.bedrooms);
-      if (filters.bathrooms) params.append('search[bathrooms]', filters.bathrooms);
-      if (filters.half_bathrooms) params.append('search[half_bathrooms]', filters.half_bathrooms);
-      if (filters.floor) params.append('search[floor]', filters.floor);
-      if (filters.construction_size) params.append('search[construction_size]', filters.construction_size);
-      if (filters.balcony) params.append('search[features][]', 'balcony');
-      if (filters.terrace) params.append('search[features][]', 'terrace');
-      if (filters.parking_spaces) params.append('search[parking_spaces]', filters.parking_spaces);
+    if (filters.operation_type) {
+      params.append('search[operation_types][]', filters.operation_type);
+    }
+    if (filters.bedrooms) {
+      params.append('search[bedrooms]', filters.bedrooms);
+    }
+    if (filters.bathrooms) {
+      params.append('search[bathrooms]', filters.bathrooms);
+    }
+    if (filters.half_bathrooms) {
+      params.append('search[half_bathrooms]', filters.half_bathrooms);
+    }
+    if (filters.floor) {
+      params.append('search[floor]', filters.floor);
+    }
+    if (filters.construction_size) {
+      params.append('search[construction_size]', filters.construction_size);
+    }
+    if (filters.balcony) {
+      params.append('search[features][]', 'balcony');
+    }
+    if (filters.terrace) {
+      params.append('search[features][]', 'terrace');
+    }
+    if (filters.parking_spaces) {
+      params.append('search[parking_spaces]', filters.parking_spaces);
+    }
 
-      try {
-        const res = await fetch(`https://api.easybroker.com/v1/properties?${params.toString()}`, {
-          headers: {
-            'X-Authorization': apiKey,
-            'Accept': 'application/json'
-          }
-        });
-        const data = await res.json();
-        setPropiedades(data.content || []);
-      } catch (error) {
-        console.error('Error al obtener propiedades:', error);
-        setPropiedades([]);
-      }
-    };
+    try {
+      const res = await fetch(`https://api.easybroker.com/v1/properties?${params.toString()}`, {
+        headers: {
+          'X-Authorization': apiKey,
+          'Accept': 'application/json'
+        }
+      });
+      const data = await res.json();
+      setPropiedades(data.content || []);
+    } catch (error) {
+      console.error('Error al obtener propiedades:', error);
+      setPropiedades([]);
+    }
+  };
 
-    fetchPropiedades();
-  }, [filters]);
+  fetchPropiedades();
+}, [filters]);
 
   return (
     <div style={{ padding: '2rem' }}>
