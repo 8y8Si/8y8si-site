@@ -1,95 +1,151 @@
-// components/PropertyFilters.js
-import React from "react";
+import React, { useState } from 'react';
 
-const PropertyFilters = ({ filters, setFilters }) => {
-  const handleChange = (key, value) => {
-    setFilters((prev) => ({
-      ...prev,
-      [key]: value,
-    }));
+export default function Home({ propiedades }) {
+  const [filtro, setFiltro] = useState({
+    operacion: '',
+    tipo: '',
+    precioMin: '',
+    precioMax: '',
+  });
+
+  const handleChange = (e) => {
+    setFiltro({ ...filtro, [e.target.name]: e.target.value });
   };
 
+  const filtrarPropiedades = () => {
+    return propiedades.filter((prop) => {
+      const op = prop.operations?.[0]?.type || '';
+      const tipo = prop.property_type || '';
+      const precio = prop.operations?.[0]?.amount || 0;
+
+      return (
+        (filtro.operacion === '' || op === filtro.operacion) &&
+        (filtro.tipo === '' || tipo === filtro.tipo) &&
+        (filtro.precioMin === '' || precio >= parseInt(filtro.precioMin)) &&
+        (filtro.precioMax === '' || precio <= parseInt(filtro.precioMax))
+      );
+    });
+  };
+
+  const propiedadesFiltradas = filtrarPropiedades();
+
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 p-4">
-      <select
-        value={filters.operation_type || ""}
-        onChange={(e) => handleChange("operation_type", e.target.value)}
-        className="border p-2 rounded"
-      >
-        <option value="">Operación</option>
-        <option value="sale">Venta</option>
-        <option value="rent">Renta</option>
-      </select>
+    <div>
+      <h1>Propiedades disponibles en venta o renta</h1>
 
-      <input
-        type="number"
-        placeholder="Recámaras"
-        value={filters.bedrooms || ""}
-        onChange={(e) => handleChange("bedrooms", e.target.value)}
-        className="border p-2 rounded"
-      />
+      <div style={{ marginBottom: "1rem" }}>
+        <select name="operacion" onChange={handleChange}>
+          <option value="">Operación</option>
+          <option value="sale">Venta</option>
+          <option value="rent">Renta</option>
+        </select>
 
-      <input
-        type="number"
-        placeholder="Baños"
-        value={filters.bathrooms || ""}
-        onChange={(e) => handleChange("bathrooms", e.target.value)}
-        className="border p-2 rounded"
-      />
+        <select name="tipo" onChange={handleChange}>
+          <option value="">Tipo de Propiedad</option>
+          <option value="Casa">Casa</option>
+          <option value="Casa en condominio">Casa en condominio</option>
+          <option value="Departamento">Departamento</option>
+          <option value="Quinta">Quinta</option>
+          <option value="Rancho">Rancho</option>
+          <option value="Terreno">Terreno</option>
+          <option value="Villa">Villa</option>
+          <option value="Bodega comercial">Bodega comercial</option>
+          <option value="Casa con uso de suelo">Casa con uso de suelo</option>
+          <option value="Edificio">Edificio</option>
+          <option value="Huerta">Huerta</option>
+          <option value="Local comercial">Local comercial</option>
+          <option value="Local en centro comercial">Local en centro comercial</option>
+          <option value="Oficina">Oficina</option>
+          <option value="Terreno comercial">Terreno comercial</option>
+          <option value="Bodega industrial">Bodega industrial</option>
+          <option value="Nave industrial">Nave industrial</option>
+          <option value="Terreno industrial">Terreno industrial</option>
+        </select>
 
-      <input
-        type="number"
-        placeholder="Medios baños"
-        value={filters.half_bathrooms || ""}
-        onChange={(e) => handleChange("half_bathrooms", e.target.value)}
-        className="border p-2 rounded"
-      />
+        <input
+          type="number"
+          name="precioMin"
+          placeholder="Precio mínimo"
+          onChange={handleChange}
+        />
 
-      <input
-        type="number"
-        placeholder="Piso"
-        value={filters.floor || ""}
-        onChange={(e) => handleChange("floor", e.target.value)}
-        className="border p-2 rounded"
-      />
+        <input
+          type="number"
+          name="precioMax"
+          placeholder="Precio máximo"
+          onChange={handleChange}
+        />
+      </div>
 
-      <input
-        type="number"
-        placeholder="m² construcción"
-        value={filters.construction_size || ""}
-        onChange={(e) => handleChange("construction_size", e.target.value)}
-        className="border p-2 rounded"
-      />
+      {propiedadesFiltradas.length === 0 ? (
+        <p>No se encontraron propiedades disponibles.</p>
+      ) : (
+        <ul>
+          {propiedadesFiltradas.map((propiedad) => {
+            const operacion = propiedad.operations?.[0];
+            const precio = operacion?.formatted_amount || 'No disponible';
 
-      <select
-        value={filters.terrace || ""}
-        onChange={(e) => handleChange("terrace", e.target.value === "true")}
-        className="border p-2 rounded"
-      >
-        <option value="">¿Terraza?</option>
-        <option value="true">Sí</option>
-        <option value="false">No</option>
-      </select>
-
-      <select
-        value={filters.balcony || ""}
-        onChange={(e) => handleChange("balcony", e.target.value === "true")}
-        className="border p-2 rounded"
-      >
-        <option value="">¿Balcón?</option>
-        <option value="true">Sí</option>
-        <option value="false">No</option>
-      </select>
-
-      <input
-        type="number"
-        placeholder="Estacionamientos"
-        value={filters.parking_spaces || ""}
-        onChange={(e) => handleChange("parking_spaces", e.target.value)}
-        className="border p-2 rounded"
-      />
+            return (
+              <li key={propiedad.id} style={{ marginBottom: "2rem" }}>
+                <h2>{propiedad.title}</h2>
+                {propiedad.title_image_full && (
+                  <img
+                    src={propiedad.title_image_full}
+                    alt={propiedad.title}
+                    width={300}
+                  />
+                )}
+                <p>Operación: {operacion?.type || 'No especificado'}</p>
+                <p>Precio: {precio}</p>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </div>
   );
-};
+}
 
-export default PropertyFilters;
+export async function getServerSideProps() {
+  const apiKey = process.env.EASYBROKER_API_KEY || process.env.NEXT_PUBLIC_EASYBROKER_API_KEY;
+
+  if (!apiKey) {
+    console.error("❌ EASYBROKER_API_KEY no está definida");
+    return {
+      props: {
+        propiedades: [],
+      },
+    };
+  }
+
+  try {
+    const url = `https://api.easybroker.com/v1/properties?search[statuses][]=published&limit=100`;
+
+    const res = await fetch(url, {
+      headers: {
+        "X-Authorization": apiKey,
+        "Accept": "application/json",
+      },
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json();
+      console.error("❌ Error en respuesta:", errorData);
+      throw new Error(`Error ${res.status}`);
+    }
+
+    const data = await res.json();
+    return {
+      props: {
+        propiedades: data.content || [],
+      },
+    };
+  } catch (error) {
+    console.error("❌ Error al obtener propiedades:", error.message);
+    return {
+      props: {
+        propiedades: [],
+      },
+    };
+  }
+}
