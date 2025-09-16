@@ -1,114 +1,87 @@
 // /pages/api/propiedades.js
 export default async function handler(req, res) {
   try {
-    // ⚠️ La variable debe llamarse EXACTAMENTE así en Vercel: EASYBROKER_API_KEY
     const apiKey = process.env.EASYBROKER_API_KEY;
-    if (!apiKey) {
-      return res.status(500).json({ error: 'Falta EASYBROKER_API_KEY en Vercel' });
-    }
+    if (!apiKey) return res.status(500).json({ error: 'Falta EASYBROKER_API_KEY en Vercel' });
 
     const {
-      operation = '',   // 'rent' | 'sale' | ''
-      type = '',        // ej. 'apartment', 'house' (lo que devuelva EB)
+      operation = '',   // acepta 'renta'|'rental'|'rent' y 'venta'|'sale'
+      type = '',        // acepta 'departamento'|'casa'... (coincidirá con lo que devuelva EB)
       priceMin = '',
-      priceMax = '',
-      debug = '0'
+      priceMax = ''
     } = req.query;
 
     const headers = { 'X-Authorization': apiKey, 'Accept': 'application/json' };
     const BASE_URL = 'https://api.easybroker.com/v1/properties';
 
-    // -------- Paginación robusta (usa pagination.next_page) --------
-    let nextPage = 1;
+    // --- Paginación robusta: soporta next_page y/o total_pages ---
+    let page = 1;
     const limit = 50;
     let all = [];
-
-    while (nextPage) {
-      const url = `${BASE_URL}?status=published&page=${nextPage}&limit=${limit}`;
+    while (true) {
+      const url = `${BASE_URL}?status=published&page=${page}&limit=${limit}`;
       const r = await fetch(url, { headers });
-      if (!r.ok) {
-        const t = await r.text();
-        throw new Error(`EasyBroker ${r.status} - ${t}`);
-      }
+      if (!r.ok) throw new Error(`EasyBroker ${r.status} ${await r.text()}`);
       const data = await r.json();
-      const content = data.content || data.properties || [];
-      all = all.concat(content);
 
-      // EB suele traer esto: data.pagination = { page, total_pages, next_page }
-      nextPage = data?.pagination?.next_page || null;
+      all = all.concat(data.content || data.properties || []);
+
+      const nextByField = data?.pagination?.next_page;
+      const hasMoreByTotals = data?.pagination?.page < data?.pagination?.total_pages;
+      if (!nextByField && !hasMoreByTotals) break;
+
+      page = nextByField || (data?.pagination?.page + 1);
     }
 
-    // -------- Modo DEBUG: ver qué trae tu cuenta --------
-    if (debug === '1' || debug === 'true') {
-      const opSet = new Set();
-      const typeSet = new Set();
-      let rentCount = 0, saleCount = 0;
+    // --- Normalización de operación (mapea a lo que devuelve EB) ---
+    const normalizeOp = (op) => {
+      const v = (op || '').toLowerCase().trim();
+      if (['renta', 'rent', 'rental'].includes(v)) return 'rental';
+      if (['venta', 'sale', 'sell'].includes(v)) return 'sale';
+      return '';
+    };
+    const opWanted = normalizeOp(operation);
 
-      all.forEach(p => {
-        const ops = Array.isArray(p.operations) ? p.operations : [];
-        ops.forEach(op => {
-          const t = (op.type || '').toLowerCase();
-          if (t) opSet.add(t);
-          if (t === 'rent') rentCount++;
-          if (t === 'sale') saleCount++;
-        });
-        const pt = (p.property_type || '').toLowerCase();
-        if (pt) typeSet.add(pt);
-      });
+    // --- Normalización de tipo (compara en minúsculas tal cual lo entrega EB) ---
+    const typeWanted = (type || '').toLowerCase().trim();
 
-      return res.status(200).json({
-        total_recibidas: all.length,
-        operaciones_detectadas: Array.from(opSet),
-        tipos_detectados: Array.from(typeSet),
-        conteo_ops: { rentCount, saleCount, ambas_en_mismo_listing: rentCount && saleCount ? 'posible' : 'revisar' },
-        ejemplo_primera: all[0] || null,
-      });
-    }
+    const min = priceMin ? parseInt(priceMin, 10) : null;
+    const max = priceMax ? parseInt(priceMax, 10) : null;
 
-    // -------- Filtros --------
-    const opWanted = (operation || '').toLowerCase();          // 'rent' | 'sale' | ''
-    const parsedMin = priceMin ? parseInt(priceMin, 10) : null;
-    const parsedMax = priceMax ? parseInt(priceMax, 10) : null;
+    const filtered = all.filter((p) => {
+      const ops = Array.isArray(p.operations) ? p.operations : [];
+      const propType = (p.property_type || '').toLowerCase();
 
-    const filtered = all.filter((prop) => {
-      const operations = Array.isArray(prop.operations) ? prop.operations : [];
+      // operación
+      const opMatch = !opWanted || ops.some((o) => (o.type || '').toLowerCase() === opWanted);
 
-      // Operación: si pides rent/sale, debe existir en operations
-      const opMatch = !opWanted || operations.some((op) => (op.type || '').toLowerCase() === opWanted);
+      // tipo (coincidencia exacta con lo que entrega EB: 'departamento', 'casa', etc.)
+      const typeMatch = !typeWanted || propType === typeWanted;
 
-      // Tipo (coincidencia exacta en minúsculas con lo que devuelve EB)
-      const pType = (prop.property_type || '').toLowerCase();
-      const typeMatch = !type || pType === type.toLowerCase();
-
-      // Precio: toma la operación que coincide con opWanted (o la primera si no pediste)
-      let priceOk = true;
-      let candidateOps = operations;
-      if (opWanted) {
-        candidateOps = operations.filter((op) => (op.type || '').toLowerCase() === opWanted);
-      }
-      const opForPrice = candidateOps[0] || operations[0];
+      // precio (usa la operación pedida; si no, la primera disponible)
+      let okPrice = true;
+      let cand = ops;
+      if (opWanted) cand = ops.filter((o) => (o.type || '').toLowerCase() === opWanted);
+      const opForPrice = cand[0] || ops[0];
       const price = (opForPrice && typeof opForPrice.amount === 'number') ? opForPrice.amount : null;
 
-      if (parsedMin !== null && price !== null) priceOk = priceOk && price >= parsedMin;
-      if (parsedMax !== null && price !== null) priceOk = priceOk && price <= parsedMax;
+      if (min !== null && price !== null) okPrice = okPrice && price >= min;
+      if (max !== null && price !== null) okPrice = okPrice && price <= max;
 
-      return opMatch && typeMatch && priceOk;
+      return opMatch && typeMatch && okPrice;
     });
 
-    // -------- Mapeo de salida --------
     const items = filtered.map((p) => {
-      const operations = Array.isArray(p.operations) ? p.operations : [];
+      const ops = Array.isArray(p.operations) ? p.operations : [];
       const opSel = opWanted
-        ? operations.find((op) => (op.type || '').toLowerCase() === opWanted) || operations[0]
-        : operations[0];
+        ? ops.find((o) => (o.type || '').toLowerCase() === opWanted) || ops[0]
+        : ops[0];
 
-      // imagen principal: intenta varias rutas
       const img =
         p.title_image_full ||
         p.title_image ||
         (Array.isArray(p.property_images) && p.property_images[0]?.url) ||
-        (p.photos && p.photos[0]?.url) ||
-        null;
+        (p.photos && p.photos[0]?.url) || null;
 
       return {
         id: p.public_id || p.id,
