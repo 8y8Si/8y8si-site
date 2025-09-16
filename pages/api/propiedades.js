@@ -7,19 +7,19 @@ export default async function handler(req, res) {
     }
 
     const {
-      operation = '',   // 'renta'|'rental'|'rent'|'venta'|'sale'|''
-      type = '',        // 'departamento','casa','oficina',...
+      operation = '',
+      type = '',
       priceMin = '',
       priceMax = '',
-      currency = '',    // 'MXN'|'USD'|'EUR'|''
-      status = '',      // published|not_published|reserved|sold_rented|suspended|flagged|''
-      meta = ''         // 'types' => devuelve metadatos
+      currency = '',
+      status = '',
+      meta = ''
     } = req.query;
 
     const headers = { 'X-Authorization': apiKey, Accept: 'application/json' };
     const BASE_URL = 'https://api.easybroker.com/v1/properties';
 
-    // ---------- Helpers ----------
+    // -------- Helpers --------
     const normalizeOp = (op) => {
       const v = String(op || '').toLowerCase().trim();
       if (['renta', 'rent', 'rental'].includes(v)) return 'rental';
@@ -38,12 +38,12 @@ export default async function handler(req, res) {
 
     const normalizeStatus = (s) => {
       const v = String(s || '').toLowerCase().trim();
-      if (['publicada','published','publish','publicadas'].includes(v)) return 'published';
-      if (['no publicada','nopublicada','not_published','draft','no-publicada'].includes(v)) return 'not_published';
-      if (['reservada','reserved','reserva'].includes(v)) return 'reserved';
-      if (['vendida o rentada','vendida','rentada','sold','rented','sold_rented','vendida-rentada'].includes(v)) return 'sold_rented';
+      if (['publicada','published'].includes(v)) return 'published';
+      if (['no publicada','not_published'].includes(v)) return 'not_published';
+      if (['reservada','reserved'].includes(v)) return 'reserved';
+      if (['vendida o rentada','sold_rented','sold','rented'].includes(v)) return 'sold_rented';
       if (['suspendida','suspended'].includes(v)) return 'suspended';
-      if (['marcada para revisión','flagged','review','revisión','marcada','flagged_for_review'].includes(v)) return 'flagged';
+      if (['marcada para revisión','flagged'].includes(v)) return 'flagged';
       return '';
     };
 
@@ -55,7 +55,7 @@ export default async function handler(req, res) {
     const min = priceMin ? parseInt(priceMin, 10) : null;
     const max = priceMax ? parseInt(priceMax, 10) : null;
 
-    // ---------- Paginación ----------
+    // -------- Paginación --------
     let page = 1;
     const limit = 50;
     let all = [];
@@ -77,7 +77,7 @@ export default async function handler(req, res) {
       page = nextByField || (data?.pagination?.page + 1);
     }
 
-    // ---------- Metadatos ----------
+    // -------- Metadatos --------
     if (String(meta).toLowerCase() === 'types') {
       const types = new Set();
       const ops = new Set();
@@ -85,18 +85,15 @@ export default async function handler(req, res) {
       const statuses = new Set();
 
       all.forEach((p) => {
-        const pt = (p.property_type || '').trim();
-        if (pt) types.add(pt);
+        if (p.property_type) types.add(p.property_type.trim());
 
         const o = Array.isArray(p.operations) ? p.operations : [];
         o.forEach((x) => {
-          const t = String(x.type || '').toLowerCase();
-          if (t) ops.add(t);
-          const c = normalizeCurrency(x.currency);
-          if (c) currs.add(c);
+          if (x.type) ops.add(String(x.type).toLowerCase());
+          if (x.currency) currs.add(normalizeCurrency(x.currency));
         });
 
-        const rawStatus = String(p.status ?? p.property_status ?? p.listing_status ?? '').toLowerCase().trim();
+        const rawStatus = String(p.status ?? '').toLowerCase().trim();
         const norm = normalizeStatus(rawStatus);
         if (norm) statuses.add(norm);
       });
@@ -109,10 +106,10 @@ export default async function handler(req, res) {
       });
     }
 
-    // ---------- Filtro por estado (si no pediste 'published' directo) ----------
+    // -------- Filtro por estado --------
     const statusFiltered = all.filter((p) => {
       if (!statusWanted || statusWanted === 'published') return true;
-      const raw = String(p.status ?? p.property_status ?? p.listing_status ?? '').toLowerCase().trim();
+      const raw = String(p.status ?? '').toLowerCase().trim();
       const norm = normalizeStatus(raw);
       if (statusWanted === 'sold_rented') {
         return ['sold_rented','sold','rented'].includes(norm) || ['sold','rented'].includes(raw);
@@ -120,7 +117,7 @@ export default async function handler(req, res) {
       return norm === statusWanted;
     });
 
-    // ---------- Resto de filtros ----------
+    // -------- Otros filtros --------
     const filtered = statusFiltered.filter((p) => {
       const ops = Array.isArray(p.operations) ? p.operations : [];
       const propType = String(p.property_type || '').toLowerCase();
@@ -133,7 +130,7 @@ export default async function handler(req, res) {
       if (currencyWanted) cand = cand.filter((o) => normalizeCurrency(o.currency) === currencyWanted);
 
       const sel = cand[0] || ops[0];
-      const price = sel && typeof sel.amount === 'number' ? sel.amount : null;
+      const price = sel?.amount ?? null;
       const currOk = !currencyWanted || (sel && normalizeCurrency(sel.currency) === currencyWanted);
 
       let okPrice = true;
@@ -143,7 +140,7 @@ export default async function handler(req, res) {
       return opMatch && typeMatch && currOk && okPrice;
     });
 
-    // ---------- Mapeo uniforme ----------
+    // -------- Mapeo uniforme --------
     const items = filtered.map((p) => {
       const ops = Array.isArray(p.operations) ? p.operations : [];
       let sel = ops[0] || null;
@@ -161,15 +158,14 @@ export default async function handler(req, res) {
         p.title_image_full ||
         p.title_image ||
         (Array.isArray(p.property_images) && p.property_images[0]?.url) ||
-        (p.photos && p.photos[0]?.url) ||
         null;
 
-      const rawStatus = String(p.status ?? p.property_status ?? p.listing_status ?? '').toLowerCase().trim();
+      const rawStatus = String(p.status ?? '').toLowerCase().trim();
 
       return {
         id: p.public_id || p.id,
         title: p.title || '',
-        location: p.location || p.address || '',
+        location: p.location || '',
         property_type: p.property_type || '',
         operation: sel?.type || '',
         amount: sel?.amount ?? null,
@@ -178,7 +174,7 @@ export default async function handler(req, res) {
         bedrooms: p.bedrooms ?? null,
         bathrooms: p.bathrooms ?? null,
         parking_spaces: p.parking_spaces ?? null,
-        constructed_area: p.construction_size ?? p.construction_m2 ?? null,
+        constructed_area: p.construction_size ?? null,
         image: img
       };
     });
