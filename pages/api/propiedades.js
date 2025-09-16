@@ -19,7 +19,6 @@ export default async function handler(req, res) {
     const headers = { 'X-Authorization': apiKey, Accept: 'application/json' };
     const BASE_URL = 'https://api.easybroker.com/v1/properties';
 
-    // -------- Helpers --------
     const normalizeOp = (op) => {
       const v = String(op || '').toLowerCase().trim();
       if (['renta', 'rent', 'rental'].includes(v)) return 'rental';
@@ -55,7 +54,7 @@ export default async function handler(req, res) {
     const min = priceMin ? parseInt(priceMin, 10) : null;
     const max = priceMax ? parseInt(priceMax, 10) : null;
 
-    // -------- Paginación --------
+    // ---- Paginación ----
     let page = 1;
     const limit = 50;
     let all = [];
@@ -77,7 +76,7 @@ export default async function handler(req, res) {
       page = nextByField || (data?.pagination?.page + 1);
     }
 
-    // -------- Metadatos --------
+    // ---- Metadatos ----
     if (String(meta).toLowerCase() === 'types') {
       const types = new Set();
       const ops = new Set();
@@ -106,7 +105,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // -------- Filtro por estado --------
+    // ---- Filtros ----
     const statusFiltered = all.filter((p) => {
       if (!statusWanted || statusWanted === 'published') return true;
       const raw = String(p.status ?? '').toLowerCase().trim();
@@ -117,7 +116,6 @@ export default async function handler(req, res) {
       return norm === statusWanted;
     });
 
-    // -------- Otros filtros --------
     const filtered = statusFiltered.filter((p) => {
       const ops = Array.isArray(p.operations) ? p.operations : [];
       const propType = String(p.property_type || '').toLowerCase();
@@ -140,7 +138,6 @@ export default async function handler(req, res) {
       return opMatch && typeMatch && currOk && okPrice;
     });
 
-    // -------- Mapeo uniforme --------
     const items = filtered.map((p) => {
       const ops = Array.isArray(p.operations) ? p.operations : [];
       let sel = ops[0] || null;
