@@ -17,38 +17,55 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
 
-  // Filtros UI (lo que ve el usuario)
+  // Tipos dinámicos desde la API
+  const [tipos, setTipos] = useState([]); // e.g. ['Casa','Departamento','Oficina',...]
+  const [opsDisponibles, setOpsDisponibles] = useState([]); // e.g. ['rental','sale']
+
+  // Filtros UI
   const [filtro, setFiltro] = useState({
-    operacionUI: 'Todas',       // 'Renta' | 'Venta' | 'Todas'
-    tipoUI: 'Todos',            // 'Departamento' | 'Casa' | 'Oficina' | 'Bodega' | 'Todos'
+    operacionUI: 'Todas',     // 'Todas' | 'Renta' | 'Venta'
+    tipoUI: 'Todos',          // 'Todos' | (opciones vienen de tipos)
     precioMin: '',
     precioMax: ''
   });
 
-  const operationMap = { 'Todas': '', 'Renta': 'rental', 'Venta': 'sale' };
-  const typeMap = {
-    'Todos': '',
-    'Departamento': 'departamento',
-    'Casa': 'casa',
-    'Oficina': 'oficina',
-    'Bodega': 'bodega'
-    // Agrega más si tu inventario los maneja (según /api/propiedades?debug=1 → tipos_detectados)
+  const onChange = (e) => setFiltro((f) => ({ ...f, [e.target.name]: e.target.value }));
+
+  // Mapea UI → API
+  const uiToApiOperation = (ui) => {
+    if (ui === 'Renta') return 'rental';
+    if (ui === 'Venta') return 'sale';
+    return ''; // Todas
   };
 
-  const onChange = (e) => setFiltro((f) => ({ ...f, [e.target.name]: e.target.value }));
+  const fetchTipos = async () => {
+    try {
+      const r = await fetch('/api/propiedades?meta=types');
+      const d = await r.json();
+      setTipos(['Todos', ...(d.types || [])]);        // Primero "Todos"
+      setOpsDisponibles(d.operations || []);
+    } catch (e) {
+      console.error(e);
+      // Si falla, deja un mínimo para no romper UI
+      setTipos(['Todos', 'Casa', 'Departamento']);
+      setOpsDisponibles(['rental','sale']);
+    }
+  };
 
   const fetchProps = async (withFilters = false) => {
     setLoading(true); setErr('');
     try {
       const params = new URLSearchParams();
       if (withFilters) {
-        const op = operationMap[filtro.operacionUI] ?? '';
-        const tp = (typeMap[filtro.tipoUI] ?? '').toLowerCase();
+        const op = uiToApiOperation(filtro.operacionUI);     // 'rental'|'sale'|''
+        const tipoUi = filtro.tipoUI;                         // 'Casa','Departamento',...
+        const tp = tipoUi && tipoUi !== 'Todos' ? tipoUi.toLowerCase() : '';
+
         const min = filtro.precioMin.trim();
         const max = filtro.precioMax.trim();
 
-        if (op) params.set('operation', op);  // 'rental' | 'sale'
-        if (tp) params.set('type', tp);       // 'departamento' | 'casa'...
+        if (op) params.set('operation', op);
+        if (tp) params.set('type', tp);
         if (min) params.set('priceMin', parseInt(min, 10));
         if (max) params.set('priceMax', parseInt(max, 10));
       }
@@ -66,8 +83,11 @@ export default function Home() {
     }
   };
 
-  // Carga inicial: sin filtros (muestra todo lo publicado)
-  useEffect(() => { fetchProps(false); }, []);
+  // Carga inicial: tipos + propiedades sin filtros
+  useEffect(() => {
+    fetchTipos();
+    fetchProps(false);
+  }, []);
 
   return (
     <main style={{ maxWidth: 1100, margin: '40px auto', padding: '0 16px' }}>
@@ -77,16 +97,15 @@ export default function Home() {
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
         <select name="operacionUI" value={filtro.operacionUI} onChange={onChange} style={{ padding: 8 }}>
           <option value="Todas">Todas</option>
-          <option value="Renta">Renta</option>
-          <option value="Venta">Venta</option>
+          {/* solo muestra opciones si existen en el backend */}
+          {opsDisponibles.includes('rental') && <option value="Renta">Renta</option>}
+          {opsDisponibles.includes('sale') && <option value="Venta">Venta</option>}
         </select>
 
         <select name="tipoUI" value={filtro.tipoUI} onChange={onChange} style={{ padding: 8 }}>
-          <option value="Todos">Todos</option>
-          <option value="Departamento">Departamento</option>
-          <option value="Casa">Casa</option>
-          <option value="Oficina">Oficina</option>
-          <option value="Bodega">Bodega</option>
+          {tipos.map((t) => (
+            <option key={t} value={t}>{t}</option>
+          ))}
         </select>
 
         <input
@@ -101,7 +120,10 @@ export default function Home() {
         <button onClick={() => fetchProps(true)} style={{ padding: '8px 14px', cursor: 'pointer' }}>
           Filtrar
         </button>
-        <button onClick={() => { setFiltro({ operacionUI: 'Todas', tipoUI: 'Todos', precioMin: '', precioMax: '' }); fetchProps(false); }} style={{ padding: '8px 14px', cursor: 'pointer' }}>
+        <button
+          onClick={() => { setFiltro({ operacionUI: 'Todas', tipoUI: 'Todos', precioMin: '', precioMax: '' }); fetchProps(false); }}
+          style={{ padding: '8px 14px', cursor: 'pointer' }}
+        >
           Limpiar
         </button>
       </div>
