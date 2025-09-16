@@ -7,13 +7,13 @@ export default async function handler(req, res) {
     }
 
     const {
-      operation = '',    // 'renta'|'rental'|'rent'|'venta'|'sale'|''
-      type = '',         // 'departamento','casa','oficina',...
+      operation = '',   // 'renta'|'rental'|'rent'|'venta'|'sale'|''
+      type = '',        // 'departamento','casa','oficina',...
       priceMin = '',
       priceMax = '',
-      currency = '',     // 'MXN'|'USD'|'EUR'|''
-      status = '',       // published|not_published|reserved|sold_rented|suspended|flagged|'' (todas)
-      meta = ''          // 'types' => devuelve metadatos
+      currency = '',    // 'MXN'|'USD'|'EUR'|''
+      status = '',      // published|not_published|reserved|sold_rented|suspended|flagged|''
+      meta = ''         // 'types' => devuelve metadatos
     } = req.query;
 
     const headers = { 'X-Authorization': apiKey, Accept: 'application/json' };
@@ -36,15 +36,14 @@ export default async function handler(req, res) {
       return v || 'MXN';
     };
 
-    // claves internas de estado
     const normalizeStatus = (s) => {
       const v = String(s || '').toLowerCase().trim();
-      if (['publicada', 'published', 'publish', 'publicadas'].includes(v)) return 'published';
-      if (['no publicada', 'nopublicada', 'not_published', 'draft', 'no-publicada'].includes(v)) return 'not_published';
-      if (['reservada', 'reserved', 'reserva'].includes(v)) return 'reserved';
-      if (['vendida o rentada', 'vendida', 'rentada', 'sold', 'rented', 'sold_rented', 'vendida-rentada'].includes(v)) return 'sold_rented';
-      if (['suspendida', 'suspended'].includes(v)) return 'suspended';
-      if (['marcada para revisión', 'flagged', 'review', 'revisión', 'marcada', 'flagged_for_review'].includes(v)) return 'flagged';
+      if (['publicada','published','publish','publicadas'].includes(v)) return 'published';
+      if (['no publicada','nopublicada','not_published','draft','no-publicada'].includes(v)) return 'not_published';
+      if (['reservada','reserved','reserva'].includes(v)) return 'reserved';
+      if (['vendida o rentada','vendida','rentada','sold','rented','sold_rented','vendida-rentada'].includes(v)) return 'sold_rented';
+      if (['suspendida','suspended'].includes(v)) return 'suspended';
+      if (['marcada para revisión','flagged','review','revisión','marcada','flagged_for_review'].includes(v)) return 'flagged';
       return '';
     };
 
@@ -61,7 +60,6 @@ export default async function handler(req, res) {
     const limit = 50;
     let all = [];
     while (true) {
-      // si piden published, optimizamos en la query
       const qsStatus = statusWanted === 'published' ? '&status=published' : '';
       const url = `${BASE_URL}?page=${page}&limit=${limit}${qsStatus}`;
       const r = await fetch(url, { headers });
@@ -79,7 +77,7 @@ export default async function handler(req, res) {
       page = nextByField || (data?.pagination?.page + 1);
     }
 
-    // ---------- Metadatos para poblar selects ----------
+    // ---------- Metadatos ----------
     if (String(meta).toLowerCase() === 'types') {
       const types = new Set();
       const ops = new Set();
@@ -117,7 +115,7 @@ export default async function handler(req, res) {
       const raw = String(p.status ?? p.property_status ?? p.listing_status ?? '').toLowerCase().trim();
       const norm = normalizeStatus(raw);
       if (statusWanted === 'sold_rented') {
-        return ['sold_rented', 'sold', 'rented'].includes(norm) || ['sold', 'rented'].includes(raw);
+        return ['sold_rented','sold','rented'].includes(norm) || ['sold','rented'].includes(raw);
       }
       return norm === statusWanted;
     });
