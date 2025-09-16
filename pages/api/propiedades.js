@@ -7,129 +7,119 @@ export default async function handler(req, res) {
     }
 
     const {
-      operation = '',   // 'renta'|'rental'|'rent'|'venta'|'sale'|''
-      type = '',        // 'departamento','casa','oficina','bodega', etc. (tal como lo entrega EB; comparamos en lower)
+      operation = '',   // 'renta'|'rental'|'rent'|'venta'|'sale'|'' (todas)
+      type = '',        // ej. 'departamento','casa','oficina'... (comparamos en lower)
       priceMin = '',
       priceMax = '',
-      currency = '',    // 'MXN' | 'USD' | 'EUR' | '' (todas)
-      meta = ''         // 'types' -> devuelve metadata (tipos/operaciones/monedas) en lugar de items
+      currency = '',    // 'MXN'|'USD'|'EUR'|'' (todas)
+      meta = ''         // 'types' => devuelve solo metadatos (tipos/operaciones/monedas)
     } = req.query;
 
     const headers = { 'X-Authorization': apiKey, Accept: 'application/json' };
     const BASE_URL = 'https://api.easybroker.com/v1/properties';
 
-    // ---------- Paginación robusta ----------
+    // -------- Paginación robusta (trae todo status=published) --------
     let page = 1;
     const limit = 50;
     let all = [];
-
     while (true) {
       const url = `${BASE_URL}?status=published&page=${page}&limit=${limit}`;
       const r = await fetch(url, { headers });
-      if (!r.ok) {
-        const txt = await r.text();
-        throw new Error(`EasyBroker ${r.status} ${txt}`);
-      }
+      if (!r.ok) throw new Error(`EasyBroker ${r.status} ${await r.text()}`);
       const data = await r.json();
-      const content = data.content || data.properties || [];
-      all = all.concat(content);
+
+      all = all.concat(data.content || data.properties || []);
 
       const nextByField = data?.pagination?.next_page;
-      const hasMoreByTotals =
-        data?.pagination?.page < data?.pagination?.total_pages;
-
+      const hasMoreByTotals = data?.pagination?.page < data?.pagination?.total_pages;
       if (!nextByField && !hasMoreByTotals) break;
       page = nextByField || (data?.pagination?.page + 1);
     }
 
-    // ---------- Solo metadata (para poblar filtros dinámicos) ----------
+    // -------- Helpers --------
+    const normalizeOp = (op) => {
+      const v = String(op || '').toLowerCase().trim();
+      if (['renta','rent','rental'].includes(v)) return 'rental';
+      if (['venta','sale','sell'].includes(v)) return 'sale';
+      return '';
+    };
+
+    const normalizeCurrency = (c) => {
+      const v = String(c || '').toUpperCase().replace(/\s+/g,'').replace(/\./g,'');
+      if (['MXN','MN','MX$','MXN$','PESOSMXN','MNMEX'].includes(v)) return 'MXN';
+      if (['USD','US$','USD$','DOLARES','DÓLARES'].includes(v)) return 'USD';
+      if (['EUR','€','EUR$'].includes(v)) return 'EUR';
+      if (v === '$' || v === '$MXN' || v === '$M') return 'MXN';
+      return v || 'MXN';
+    };
+
+    // -------- Metadatos para poblar filtros dinámicos --------
     if (String(meta).toLowerCase() === 'types') {
-      const typeSet = new Set();
-      const opSet = new Set();
-      const currSet = new Set();
-
-      all.forEach((p) => {
+      const types = new Set();
+      const ops = new Set();
+      const currs = new Set();
+      all.forEach(p => {
         const pt = (p.property_type || '').trim();
-        if (pt) typeSet.add(pt);
-
-        const ops = Array.isArray(p.operations) ? p.operations : [];
-        ops.forEach((o) => {
-          const t = String(o.type || '').toLowerCase();  // 'rental' | 'sale'
-          if (t) opSet.add(t);
-          const c = String(o.currency || '').toUpperCase(); // 'MXN' | 'USD' | 'EUR'...
-          if (c) currSet.add(c);
+        if (pt) types.add(pt);
+        const o = Array.isArray(p.operations) ? p.operations : [];
+        o.forEach(x => {
+          const t = String(x.type || '').toLowerCase();
+          if (t) ops.add(t);
+          const c = normalizeCurrency(x.currency);
+          if (c) currs.add(c);
         });
       });
-
       return res.status(200).json({
-        types: Array.from(typeSet).sort(),
-        operations: Array.from(opSet).sort(),
-        currencies: Array.from(currSet).sort()
+        types: Array.from(types).sort(),           // Ej: ['Casa','Departamento','Oficina',...]
+        operations: Array.from(ops).sort(),        // ['rental','sale']
+        currencies: Array.from(currs).sort()       // ['MXN','USD','EUR',...]
       });
     }
 
-    // ---------- Normalizaciones ----------
-    const normalizeOp = (op) => {
-      const v = String(op || '').toLowerCase().trim();
-      if (['renta', 'rent', 'rental'].includes(v)) return 'rental';
-      if (['venta', 'sale', 'sell'].includes(v)) return 'sale';
-      return '';
-    };
+    // -------- Normalizaciones de filtros --------
     const opWanted = normalizeOp(operation);
     const typeWanted = String(type || '').toLowerCase().trim();
-    const currencyWanted = String(currency || '').toUpperCase().trim(); // MXN|USD|EUR|''
+    const currencyWanted = currency ? normalizeCurrency(currency) : ''; // MXN|USD|EUR|''
 
     const min = priceMin ? parseInt(priceMin, 10) : null;
     const max = priceMax ? parseInt(priceMax, 10) : null;
 
-    // ---------- Filtros ----------
+    // -------- Filtro servidor --------
     const filtered = all.filter((p) => {
       const ops = Array.isArray(p.operations) ? p.operations : [];
       const propType = String(p.property_type || '').toLowerCase();
 
-      // Operación
       const opMatch =
-        !opWanted || ops.some((o) => String(o.type || '').toLowerCase() === opWanted);
+        !opWanted || ops.some(o => String(o.type || '').toLowerCase() === opWanted);
 
-      // Tipo
       const typeMatch = !typeWanted || propType === typeWanted;
 
-      // Conjunto candidato para precio/moneda
       let cand = ops;
-      if (opWanted) cand = cand.filter((o) => String(o.type || '').toLowerCase() === opWanted);
-      if (currencyWanted) cand = cand.filter((o) => String(o.currency || '').toUpperCase() === currencyWanted);
+      if (opWanted) cand = cand.filter(o => String(o.type || '').toLowerCase() === opWanted);
+      if (currencyWanted) cand = cand.filter(o => normalizeCurrency(o.currency) === currencyWanted);
 
-      const opForPrice = cand[0] || ops[0];
-      const price =
-        opForPrice && typeof opForPrice.amount === 'number'
-          ? opForPrice.amount
-          : null;
+      const sel = cand[0] || ops[0];
+      const price = (sel && typeof sel.amount === 'number') ? sel.amount : null;
+      const currOk = !currencyWanted || (sel && normalizeCurrency(sel.currency) === currencyWanted);
 
-      // Si se pidió moneda específica, y ninguna operación coincide, no pasa
-      const currencyMatch = !currencyWanted ||
-        (opForPrice && String(opForPrice.currency || '').toUpperCase() === currencyWanted);
-
-      // Rango de precio (SIN conversión de moneda)
       let okPrice = true;
       if (min !== null && price !== null) okPrice = okPrice && price >= min;
       if (max !== null && price !== null) okPrice = okPrice && price <= max;
 
-      return opMatch && typeMatch && currencyMatch && okPrice;
+      return opMatch && typeMatch && currOk && okPrice;
     });
 
-    // ---------- Mapeo de salida ----------
+    // -------- Mapeo uniforme para el frontend --------
     const items = filtered.map((p) => {
       const ops = Array.isArray(p.operations) ? p.operations : [];
-      // Selecciona operación priorizando lo solicitado
       let sel = ops[0] || null;
-      if (opWanted) {
-        sel = ops.find((o) => String(o.type || '').toLowerCase() === opWanted) || sel;
-      }
+      if (opWanted) sel = ops.find(o => String(o.type || '').toLowerCase() === opWanted) || sel;
       if (currencyWanted) {
-        sel = (ops.find((o) =>
-          String(o.type || '').toLowerCase() === (opWanted || String(sel?.type || '').toLowerCase()) &&
-          String(o.currency || '').toUpperCase() === currencyWanted
-        )) || sel;
+        const byCurr = ops.find(o =>
+          (!opWanted || String(o.type || '').toLowerCase() === opWanted) &&
+          normalizeCurrency(o.currency) === currencyWanted
+        );
+        sel = byCurr || sel;
       }
 
       const img =
@@ -146,7 +136,7 @@ export default async function handler(req, res) {
         property_type: p.property_type || '',
         operation: sel?.type || '',
         amount: sel?.amount ?? null,
-        currency: String(sel?.currency || 'MXN').toUpperCase(),
+        currency: normalizeCurrency(sel?.currency || 'MXN'),
         bedrooms: p.bedrooms ?? null,
         bathrooms: p.bathrooms ?? null,
         parking_spaces: p.parking_spaces ?? null,
