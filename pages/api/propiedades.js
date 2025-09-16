@@ -7,11 +7,12 @@ export default async function handler(req, res) {
     }
 
     const {
-      operation = '',   // 'renta'|'rental'|'rent'|'venta'|'sale'|'' (indistinto)
-      type = '',        // ej. 'departamento','casa','oficina'... (tal como lo entrega EB, en minúsculas)
+      operation = '',   // 'renta'|'rental'|'rent'|'venta'|'sale'|''
+      type = '',        // 'departamento','casa','oficina','bodega', etc. (tal como lo entrega EB; comparamos en lower)
       priceMin = '',
       priceMax = '',
-      meta = ''         // 'types' -> devuelve metadata (tipos/operaciones) en lugar de items
+      currency = '',    // 'MXN' | 'USD' | 'EUR' | '' (todas)
+      meta = ''         // 'types' -> devuelve metadata (tipos/operaciones/monedas) en lugar de items
     } = req.query;
 
     const headers = { 'X-Authorization': apiKey, Accept: 'application/json' };
@@ -45,21 +46,25 @@ export default async function handler(req, res) {
     if (String(meta).toLowerCase() === 'types') {
       const typeSet = new Set();
       const opSet = new Set();
+      const currSet = new Set();
 
       all.forEach((p) => {
         const pt = (p.property_type || '').trim();
-        if (pt) typeSet.add(pt); // Conservamos mayúsculas/acentos EXACTOS de EasyBroker
+        if (pt) typeSet.add(pt);
 
         const ops = Array.isArray(p.operations) ? p.operations : [];
         ops.forEach((o) => {
-          const t = String(o.type || '').toLowerCase();
-          if (t) opSet.add(t);   // e.g. 'rental', 'sale'
+          const t = String(o.type || '').toLowerCase();  // 'rental' | 'sale'
+          if (t) opSet.add(t);
+          const c = String(o.currency || '').toUpperCase(); // 'MXN' | 'USD' | 'EUR'...
+          if (c) currSet.add(c);
         });
       });
 
       return res.status(200).json({
-        types: Array.from(typeSet).sort(),         // ['Casa','Casa en condominio','Departamento',...]
-        operations: Array.from(opSet).sort()       // ['rental','sale']
+        types: Array.from(typeSet).sort(),
+        operations: Array.from(opSet).sort(),
+        currencies: Array.from(currSet).sort()
       });
     }
 
@@ -72,6 +77,8 @@ export default async function handler(req, res) {
     };
     const opWanted = normalizeOp(operation);
     const typeWanted = String(type || '').toLowerCase().trim();
+    const currencyWanted = String(currency || '').toUpperCase().trim(); // MXN|USD|EUR|''
+
     const min = priceMin ? parseInt(priceMin, 10) : null;
     const max = priceMax ? parseInt(priceMax, 10) : null;
 
@@ -80,34 +87,50 @@ export default async function handler(req, res) {
       const ops = Array.isArray(p.operations) ? p.operations : [];
       const propType = String(p.property_type || '').toLowerCase();
 
+      // Operación
       const opMatch =
         !opWanted || ops.some((o) => String(o.type || '').toLowerCase() === opWanted);
 
+      // Tipo
       const typeMatch = !typeWanted || propType === typeWanted;
 
-      let okPrice = true;
+      // Conjunto candidato para precio/moneda
       let cand = ops;
-      if (opWanted) {
-        cand = ops.filter((o) => String(o.type || '').toLowerCase() === opWanted);
-      }
+      if (opWanted) cand = cand.filter((o) => String(o.type || '').toLowerCase() === opWanted);
+      if (currencyWanted) cand = cand.filter((o) => String(o.currency || '').toUpperCase() === currencyWanted);
+
       const opForPrice = cand[0] || ops[0];
       const price =
         opForPrice && typeof opForPrice.amount === 'number'
           ? opForPrice.amount
           : null;
 
+      // Si se pidió moneda específica, y ninguna operación coincide, no pasa
+      const currencyMatch = !currencyWanted ||
+        (opForPrice && String(opForPrice.currency || '').toUpperCase() === currencyWanted);
+
+      // Rango de precio (SIN conversión de moneda)
+      let okPrice = true;
       if (min !== null && price !== null) okPrice = okPrice && price >= min;
       if (max !== null && price !== null) okPrice = okPrice && price <= max;
 
-      return opMatch && typeMatch && okPrice;
+      return opMatch && typeMatch && currencyMatch && okPrice;
     });
 
     // ---------- Mapeo de salida ----------
     const items = filtered.map((p) => {
       const ops = Array.isArray(p.operations) ? p.operations : [];
-      const opSel = opWanted
-        ? (ops.find((o) => String(o.type || '').toLowerCase() === opWanted) || ops[0])
-        : ops[0];
+      // Selecciona operación priorizando lo solicitado
+      let sel = ops[0] || null;
+      if (opWanted) {
+        sel = ops.find((o) => String(o.type || '').toLowerCase() === opWanted) || sel;
+      }
+      if (currencyWanted) {
+        sel = (ops.find((o) =>
+          String(o.type || '').toLowerCase() === (opWanted || String(sel?.type || '').toLowerCase()) &&
+          String(o.currency || '').toUpperCase() === currencyWanted
+        )) || sel;
+      }
 
       const img =
         p.title_image_full ||
@@ -121,9 +144,9 @@ export default async function handler(req, res) {
         title: p.title || '',
         location: p.location || p.address || '',
         property_type: p.property_type || '',
-        operation: opSel?.type || '',
-        amount: opSel?.amount ?? null,
-        currency: opSel?.currency || 'MXN',
+        operation: sel?.type || '',
+        amount: sel?.amount ?? null,
+        currency: String(sel?.currency || 'MXN').toUpperCase(),
         bedrooms: p.bedrooms ?? null,
         bathrooms: p.bathrooms ?? null,
         parking_spaces: p.parking_spaces ?? null,
