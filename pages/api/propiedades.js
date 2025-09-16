@@ -1,18 +1,17 @@
 // /pages/api/propiedades.js
-
 export default async function handler(req, res) {
   try {
-    // ⚠️ Debe existir en Vercel como EASYBROKER_API_KEY
     const apiKey = process.env.EASYBROKER_API_KEY;
     if (!apiKey) {
       return res.status(500).json({ error: 'Falta EASYBROKER_API_KEY en Vercel' });
     }
 
     const {
-      operation = '',   // acepta 'renta'|'rental'|'rent' y 'venta'|'sale'
-      type = '',        // acepta 'departamento'|'casa'|'oficina'|'bodega'...
+      operation = '',   // 'renta'|'rental'|'rent'|'venta'|'sale'|'' (indistinto)
+      type = '',        // ej. 'departamento','casa','oficina'... (tal como lo entrega EB, en minúsculas)
       priceMin = '',
-      priceMax = ''
+      priceMax = '',
+      meta = ''         // 'types' -> devuelve metadata (tipos/operaciones) en lugar de items
     } = req.query;
 
     const headers = { 'X-Authorization': apiKey, Accept: 'application/json' };
@@ -31,17 +30,37 @@ export default async function handler(req, res) {
         throw new Error(`EasyBroker ${r.status} ${txt}`);
       }
       const data = await r.json();
-
-      all = all.concat(data.content || data.properties || []);
+      const content = data.content || data.properties || [];
+      all = all.concat(content);
 
       const nextByField = data?.pagination?.next_page;
       const hasMoreByTotals =
         data?.pagination?.page < data?.pagination?.total_pages;
 
-      if (!nextByField && !hasMoreByTotals) {
-        break;
-      }
+      if (!nextByField && !hasMoreByTotals) break;
       page = nextByField || (data?.pagination?.page + 1);
+    }
+
+    // ---------- Solo metadata (para poblar filtros dinámicos) ----------
+    if (String(meta).toLowerCase() === 'types') {
+      const typeSet = new Set();
+      const opSet = new Set();
+
+      all.forEach((p) => {
+        const pt = (p.property_type || '').trim();
+        if (pt) typeSet.add(pt); // Conservamos mayúsculas/acentos EXACTOS de EasyBroker
+
+        const ops = Array.isArray(p.operations) ? p.operations : [];
+        ops.forEach((o) => {
+          const t = String(o.type || '').toLowerCase();
+          if (t) opSet.add(t);   // e.g. 'rental', 'sale'
+        });
+      });
+
+      return res.status(200).json({
+        types: Array.from(typeSet).sort(),         // ['Casa','Casa en condominio','Departamento',...]
+        operations: Array.from(opSet).sort()       // ['rental','sale']
+      });
     }
 
     // ---------- Normalizaciones ----------
@@ -53,7 +72,6 @@ export default async function handler(req, res) {
     };
     const opWanted = normalizeOp(operation);
     const typeWanted = String(type || '').toLowerCase().trim();
-
     const min = priceMin ? parseInt(priceMin, 10) : null;
     const max = priceMax ? parseInt(priceMax, 10) : null;
 
@@ -62,14 +80,11 @@ export default async function handler(req, res) {
       const ops = Array.isArray(p.operations) ? p.operations : [];
       const propType = String(p.property_type || '').toLowerCase();
 
-      // operación requerida (si se pidió)
       const opMatch =
         !opWanted || ops.some((o) => String(o.type || '').toLowerCase() === opWanted);
 
-      // tipo requerido (si se pidió)
       const typeMatch = !typeWanted || propType === typeWanted;
 
-      // precio según la operación pedida (o la primera disponible)
       let okPrice = true;
       let cand = ops;
       if (opWanted) {
