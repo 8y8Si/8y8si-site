@@ -4,9 +4,7 @@ import { useEffect, useState } from 'react';
 function formatCurrency(n, currency = 'MXN') {
   if (typeof n !== 'number') return 'Precio a consultar';
   try {
-    return new Intl.NumberFormat('es-MX', {
-      style: 'currency', currency, maximumFractionDigits: 0
-    }).format(n);
+    return new Intl.NumberFormat('es-MX', { style: 'currency', currency, maximumFractionDigits: 0 }).format(n);
   } catch {
     return `${n.toLocaleString('es-MX')} ${currency}`;
   }
@@ -18,29 +16,26 @@ export default function Home() {
   const [err, setErr] = useState('');
 
   // Metadatos para selects
-  const [tipos, setTipos] = useState([]);           // ['Todos','Casa','Departamento',...]
+  const [tipos, setTipos] = useState([]);            // ['Todos','Casa','Departamento',...]
   const [opsDisponibles, setOpsDisponibles] = useState([]); // ['rental','sale']
-  const [monedas, setMonedas] = useState([]);       // ['Todas','MXN','USD','EUR',...]
+  const [monedas, setMonedas] = useState([]);        // ['Todas','MXN','USD','EUR',...]
 
   // Filtros UI
   const [filtro, setFiltro] = useState({
-    operacionUI: 'Todas',     // 'Todas' | 'Renta' | 'Venta'
-    tipoUI: 'Todos',          // 'Todos' | (tipos reales)
-    monedaUI: 'Todas',        // 'Todas' | 'MXN' | 'USD' | 'EUR'
+    operacionUI: 'Todas',    // 'Todas' | 'Renta' | 'Venta'
+    tipoUI: 'Todos',         // 'Todos' | (tipos reales de EB)
+    monedaUI: 'Todas',       // 'Todas' | 'MXN' | 'USD' | 'EUR'
     precioMin: '',
     precioMax: ''
   });
 
   const onChange = (e) => setFiltro((f) => ({ ...f, [e.target.name]: e.target.value }));
 
-  // Mapea UI → API
-  const uiToApiOperation = (ui) => {
-    if (ui === 'Renta') return 'rental';
-    if (ui === 'Venta') return 'sale';
-    return '';
-  };
+  // UI → API
+  const uiToApiOperation = (ui) => (ui === 'Renta' ? 'rental' : ui === 'Venta' ? 'sale' : '');
   const uiToApiCurrency = (ui) => (ui === 'Todas' ? '' : ui); // MXN|USD|EUR|''
 
+  // Cargar tipos/monedas disponibles
   const fetchTipos = async () => {
     try {
       const r = await fetch('/api/propiedades?meta=types');
@@ -48,33 +43,33 @@ export default function Home() {
       setTipos(['Todos', ...(d.types || [])]);
       setOpsDisponibles(d.operations || []);
       const currs = (d.currencies || []).filter(Boolean).map((c) => String(c).toUpperCase());
-      // Siempre muestra estas tres si existen; si no, solo las reportadas
       const base = new Set(['MXN','USD','EUR', ...currs]);
       setMonedas(['Todas', ...Array.from(base)]);
     } catch (e) {
       console.error(e);
-      setTipos(['Todos', 'Casa', 'Departamento']);
+      setTipos(['Todos','Casa','Departamento']);
       setOpsDisponibles(['rental','sale']);
       setMonedas(['Todas','MXN','USD','EUR']);
     }
   };
 
+  // Traer propiedades
   const fetchProps = async (withFilters = false) => {
     setLoading(true); setErr('');
     try {
       const params = new URLSearchParams();
+
       if (withFilters) {
         const op = uiToApiOperation(filtro.operacionUI);
         const tipoUi = filtro.tipoUI;
         const tp = tipoUi && tipoUi !== 'Todos' ? tipoUi.toLowerCase() : '';
         const curr = uiToApiCurrency(filtro.monedaUI);
-
         const min = filtro.precioMin.trim();
         const max = filtro.precioMax.trim();
 
         if (op) params.set('operation', op);
         if (tp) params.set('type', tp);
-        if (curr) params.set('currency', curr); // 'MXN' | 'USD' | 'EUR'
+        if (curr) params.set('currency', curr);         // 👈 moneda
         if (min) params.set('priceMin', parseInt(min, 10));
         if (max) params.set('priceMax', parseInt(max, 10));
       }
@@ -92,10 +87,10 @@ export default function Home() {
     }
   };
 
-  // Carga inicial
+  // Inicial
   useEffect(() => {
     fetchTipos();
-    fetchProps(false);
+    fetchProps(false); // sin filtros al cargar
   }, []);
 
   return (
@@ -123,16 +118,24 @@ export default function Home() {
         </select>
 
         <input
-          name="precioMin" value={filtro.precioMin} onChange={onChange}
-          placeholder="Precio mínimo" inputMode="numeric" style={{ padding: 8 }}
+          name="precioMin"
+          value={filtro.precioMin}
+          onChange={onChange}
+          placeholder="Precio mínimo"
+          inputMode="numeric"
+          style={{ padding: 8 }}
         />
         <input
-          name="precioMax" value={filtro.precioMax} onChange={onChange}
-          placeholder="Precio máximo" inputMode="numeric" style={{ padding: 8 }}
+          name="precioMax"
+          value={filtro.precioMax}
+          onChange={onChange}
+          placeholder="Precio máximo"
+          inputMode="numeric"
+          style={{ padding: 8 }}
         />
 
         <button onClick={() => fetchProps(true)} style={{ padding: '8px 14px', cursor: 'pointer' }}>
-          Filtrar
+          Aplicar
         </button>
         <button
           onClick={() => {
