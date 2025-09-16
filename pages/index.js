@@ -1,4 +1,3 @@
-// /pages/index.js
 import { useEffect, useState } from 'react';
 
 function formatCurrency(n, currency = 'MXN') {
@@ -74,7 +73,6 @@ export default function Home() {
         const stat = uiToApiStatus(filtro.statusUI);
         const min = filtro.precioMin.trim();
         const max = filtro.precioMax.trim();
-
         if (op) params.set('operation', op);
         if (tipo) params.set('type', tipo);
         if (curr) params.set('currency', curr);
@@ -131,26 +129,10 @@ export default function Home() {
           ))}
         </select>
 
-        <input
-          name="precioMin"
-          value={filtro.precioMin}
-          onChange={onChange}
-          placeholder="Precio mínimo"
-          inputMode="numeric"
-          style={{ padding: 8 }}
-        />
-        <input
-          name="precioMax"
-          value={filtro.precioMax}
-          onChange={onChange}
-          placeholder="Precio máximo"
-          inputMode="numeric"
-          style={{ padding: 8 }}
-        />
+        <input name="precioMin" value={filtro.precioMin} onChange={onChange} placeholder="Precio mínimo" inputMode="numeric" style={{ padding: 8 }} />
+        <input name="precioMax" value={filtro.precioMax} onChange={onChange} placeholder="Precio máximo" inputMode="numeric" style={{ padding: 8 }} />
 
-        <button onClick={() => fetchProps(true)} style={{ padding: '8px 14px', cursor: 'pointer' }}>
-          Aplicar
-        </button>
+        <button onClick={() => fetchProps(true)} style={{ padding: '8px 14px', cursor: 'pointer' }}>Aplicar</button>
         <button
           onClick={() => {
             setFiltro({ operacionUI: 'Todas', tipoUI: 'Todos', monedaUI: 'Todas', statusUI: 'Todos', precioMin: '', precioMax: '' });
@@ -177,15 +159,9 @@ export default function Home() {
             <div style={{ padding: 12 }}>
               <h3 style={{ margin: '0 0 6px', fontSize: 18 }}>{p.title || p.property_type}</h3>
               <div style={{ color: '#666', fontSize: 14, marginBottom: 6 }}>{p.location}</div>
-              <div style={{ fontWeight: 600, marginBottom: 6 }}>
-                {p.operation?.toUpperCase()} • {formatCurrency(p.amount, p.currency)}
-              </div>
-              <div style={{ color: '#444', fontSize: 13, marginBottom: 6 }}>
-                Estado: {STATUS_LABEL[p.status] || p.status || '—'}
-              </div>
-              <div style={{ color: '#444', fontSize: 14 }}>
-                {p.bedrooms ?? '-'} rec • {p.bathrooms ?? '-'} baños • {p.parking_spaces ?? '-'} est
-              </div>
+              <div style={{ fontWeight: 600, marginBottom: 6 }}>{p.operation?.toUpperCase()} • {formatCurrency(p.amount, p.currency)}</div>
+              <div style={{ color: '#444', fontSize: 13, marginBottom: 6 }}>Estado: {STATUS_LABEL[p.status] || p.status || '—'}</div>
+              <div style={{ color: '#444', fontSize: 14 }}>{p.bedrooms ?? '-'} rec • {p.bathrooms ?? '-'} baños • {p.parking_spaces ?? '-'} est</div>
             </div>
           </article>
         ))}
