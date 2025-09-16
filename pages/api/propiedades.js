@@ -1,12 +1,13 @@
 // /pages/api/propiedades.js
 export default async function handler(req, res) {
   try {
+    // ⚠️ Debe existir en Vercel como EASYBROKER_API_KEY
     const apiKey = process.env.EASYBROKER_API_KEY;
     if (!apiKey) return res.status(500).json({ error: 'Falta EASYBROKER_API_KEY en Vercel' });
 
     const {
       operation = '',   // acepta 'renta'|'rental'|'rent' y 'venta'|'sale'
-      type = '',        // acepta 'departamento'|'casa'... (coincidirá con lo que devuelva EB)
+      type = '',        // acepta 'departamento'|'casa'|'oficina'|'bodega'...
       priceMin = '',
       priceMax = ''
     } = req.query;
@@ -14,7 +15,7 @@ export default async function handler(req, res) {
     const headers = { 'X-Authorization': apiKey, 'Accept': 'application/json' };
     const BASE_URL = 'https://api.easybroker.com/v1/properties';
 
-    // --- Paginación robusta: soporta next_page y/o total_pages ---
+    // --- Paginación robusta: next_page o total_pages ---
     let page = 1;
     const limit = 50;
     let all = [];
@@ -29,7 +30,6 @@ export default async function handler(req, res) {
       const nextByField = data?.pagination?.next_page;
       const hasMoreByTotals = data?.pagination?.page < data?.pagination?.total_pages;
       if (!nextByField && !hasMoreByTotals) break;
-
       page = nextByField || (data?.pagination?.page + 1);
     }
 
@@ -42,7 +42,7 @@ export default async function handler(req, res) {
     };
     const opWanted = normalizeOp(operation);
 
-    // --- Normalización de tipo (compara en minúsculas tal cual lo entrega EB) ---
+    // --- Tipo exacto (lo que devuelve EB, en minúsculas) ---
     const typeWanted = (type || '').toLowerCase().trim();
 
     const min = priceMin ? parseInt(priceMin, 10) : null;
@@ -52,13 +52,13 @@ export default async function handler(req, res) {
       const ops = Array.isArray(p.operations) ? p.operations : [];
       const propType = (p.property_type || '').toLowerCase();
 
-      // operación
+      // operación requerida (si se pidió)
       const opMatch = !opWanted || ops.some((o) => (o.type || '').toLowerCase() === opWanted);
 
-      // tipo (coincidencia exacta con lo que entrega EB: 'departamento', 'casa', etc.)
+      // tipo requerido (si se pidió)
       const typeMatch = !typeWanted || propType === typeWanted;
 
-      // precio (usa la operación pedida; si no, la primera disponible)
+      // precio según la operación pedida (o la primera disponible)
       let okPrice = true;
       let cand = ops;
       if (opWanted) cand = ops.filter((o) => (o.type || '').toLowerCase() === opWanted);
@@ -81,7 +81,8 @@ export default async function handler(req, res) {
         p.title_image_full ||
         p.title_image ||
         (Array.isArray(p.property_images) && p.property_images[0]?.url) ||
-        (p.photos && p.photos[0]?.url) || null;
+        (p.photos && p.photos[0]?.url) ||
+        null;
 
       return {
         id: p.public_id || p.id,
@@ -103,5 +104,3 @@ export default async function handler(req, res) {
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message || 'Internal error' });
-  }
-}
